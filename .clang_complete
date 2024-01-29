@@ -1,0 +1,8 @@
+-std=c++17
+-Wall
+--pedantic-errors
+-DDEBUG
+-I./include
+-I./lib/include
+-I/usr/include
+-I/usr/local/cuda

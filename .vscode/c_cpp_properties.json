@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${default}"
+            },
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/ros/humble/include/**",
+                "${workspaceFolder}/install/**",
+                "${workspaceFolder}/lib/include/**",
+                "${workspaceFolder}/lib/src/**",
+                "/usr/include/**",
+                "/usr/local/include/**",
+                "/usr/local/cuda/include/**"
+            ],
+            "intelliSenseMode": "linux-clang-x64",
+            "compilerPath": "/usr/lib/llvm-14/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "name": "TensorRT-MTR"
+        }
+    ],
+    "version": 4
+}
