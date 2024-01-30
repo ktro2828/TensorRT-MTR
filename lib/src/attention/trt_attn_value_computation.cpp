@@ -39,7 +39,7 @@ nvinfer1::DimsExprs AttentionValueComputation::getOutputDimensions(
   ret.nbDims = 3;
   ret.d[0] = inputs[3].d[0];
   ret.d[1] = inputs[5].d[1];
-  ret.d[3] = inputs[5].d[2];
+  ret.d[2] = inputs[5].d[2];
 
   return ret;
 }

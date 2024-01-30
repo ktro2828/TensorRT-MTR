@@ -80,5 +80,6 @@ public:
   nvinfer1::IPluginV2DynamicExt * deserializePlugin(
     const char * name, const void * serialData, size_t serialLength) TRT_NOEXCEPT override;
 };  // class AttentionValueComputationCreator
+REGISTER_TENSORRT_PLUGIN(AttentionValueComputationCreator);
 }  // namespace trt_mtr
 #endif  // TRT_ATTN_VALUE_COMPUTATION_HPP

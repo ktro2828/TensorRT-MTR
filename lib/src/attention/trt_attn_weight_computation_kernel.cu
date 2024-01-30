@@ -49,7 +49,7 @@ __global__ void attention_weight_computation_kernel(
 }
 
 template <typename T>
-void AttentionWeightComputationLauncher(
+cudaError_t AttentionWeightComputationLauncher(
   int b, int total_query_num, int local_size, int total_key_num, int nhead, int hdim,
   const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
   const int * index_pair, const T * query_features, const T * key_features, T * output,
@@ -57,7 +57,7 @@ void AttentionWeightComputationLauncher(
 {
   if (hdim > 150) {
     // TODO: WARNING
-    return;
+    return cudaError::cudaErrorInvalidValue;
   }
 
   dim3 blocks(total_query_num, nhead);
@@ -100,4 +100,11 @@ void AttentionWeightComputationLauncher(
         index_pair_batch, index_pair, query_features, key_features, output);
       break;
   }
+  return cudaGetLastError();
 }
+
+template cudaError_t AttentionWeightComputationLauncher<float>(
+  int b, int total_query_num, int local_szie, int total_value_num, int nhead, int hdim,
+  const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
+  const int * index_pair, const float * query_features, const float * key_features, float * output,
+  cudaStream_t stream);

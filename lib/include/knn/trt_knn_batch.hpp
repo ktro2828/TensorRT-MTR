@@ -82,5 +82,6 @@ public:
   nvinfer1::IPluginV2DynamicExt * deserializePlugin(
     const char * name, const void * serialData, size_t serialLength) TRT_NOEXCEPT override;
 };  // class KnnBatchCreator
+REGISTER_TENSORRT_PLUGIN(KnnBatchCreator);
 }  // namespace trt_mtr
 #endif  // TRT_KNN_BATCH_HPP

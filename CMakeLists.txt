@@ -37,18 +37,20 @@ foreach(libName ${TRT_PLUGINS})
 endforeach()
 message("TRT_PLUGIN_LIBS: " ${TRT_PLUGIN_LIBS})
 
-add_library(${PROJECT_NAME} SHARED
-    lib/src/attention/trt_attn_value_computation_kernel.cu
-    lib/src/attention/trt_attn_value_computation.cpp
-    lib/src/attention/trt_attn_weight_computation_kernel.cu
-    lib/src/attention/trt_attn_weight_computation.cpp
-    lib/src/knn/trt_knn_batch_kernel.cu
-    lib/src/knn/trt_knn_batch.cpp
-    lib/src/knn/trt_knn_batch_mlogk_kernel.cu
-    lib/src/knn/trt_knn_batch_mlogk.cpp
+cuda_add_library(attention_plugin SHARED
+  lib/src/attention/trt_attn_value_computation_kernel.cu
+  lib/src/attention/trt_attn_value_computation.cpp
+  lib/src/attention/trt_attn_weight_computation_kernel.cu
+  lib/src/attention/trt_attn_weight_computation.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} 
+cuda_add_library(knn_plugin SHARED 
+  lib/src/knn/trt_knn_batch_kernel.cu
+  lib/src/knn/trt_knn_batch.cpp
+  lib/src/knn/trt_knn_batch_mlogk_kernel.cu
+  lib/src/knn/trt_knn_batch_mlogk.cpp)
+
+target_link_libraries(attention_plugin
     ${TRT_PLUGINS}
     ${TRT_PLUGIN_LIBS}
     ${CUDA_LIBRARIES}
@@ -58,6 +60,20 @@ target_link_libraries(${PROJECT_NAME}
     ${CUDA_nppc_LIBRARY}
     ${CUDA_npps_LIBRARY})
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-    lib/include
+target_link_libraries(knn_plugin
+    ${TRT_PLUGINS}
+    ${TRT_PLUGIN_LIBS}
+    ${CUDA_LIBRARIES}
+    ${CUBLAS_LIBRARIES}
+    ${CUDNN_LIBRARIES}
+    ${CUDA_npp_LIBRARY}
+    ${CUDA_nppc_LIBRARY}
+    ${CUDA_npps_LIBRARY})  
+
+target_include_directories(attention_plugin PUBLIC
+  lib/include
+)
+
+target_include_directories(knn_plugin PUBLIC
+  lib/include
 )

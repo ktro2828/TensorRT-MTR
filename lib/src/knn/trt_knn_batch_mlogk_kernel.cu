@@ -11,7 +11,7 @@ __global__ void knn_batch_mlogk_kernel(
     return;
   }
 
-  xyz += static_cast<T>(pt_idx * 3);
+  xyz += pt_idx * 3;
   output += pt_idx * k;
 
   T ox = xyz[0];
@@ -71,7 +71,7 @@ __global__ void knn_batch_mlogk_kernel(
         if (son_idx > k) {
           break;
         }
-        if (son_idx + 1 <= &&best[son_idx] < best[son_idx + 1]) {
+        if (son_idx + 1 <= k && best[son_idx] < best[son_idx + 1]) {
           ++son_idx;
         }
 
@@ -108,3 +108,7 @@ cudaError_t KnnBatchMlogKLauncher(
 
   return cudaGetLastError();
 }
+
+template cudaError_t KnnBatchMlogKLauncher<float>(
+  const int n, const int m, const int k, const float * xyz, const float * query_xyz,
+  const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream);

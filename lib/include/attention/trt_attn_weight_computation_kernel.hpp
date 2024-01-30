@@ -22,7 +22,7 @@
  * @param output
  */
 template <typename T>
-void AttentionWeightComputationLauncher(
+cudaError_t AttentionWeightComputationLauncher(
   int b, int total_query_num, int local_size, int total_key_num, int nhead, int hdim,
   const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
   const int * index_pair, const T * query_features, const T * key_features, T * output,

@@ -80,5 +80,6 @@ public:
   nvinfer1::IPluginV2DynamicExt * deserializePlugin(
     const char * name, const void * serialData, size_t serialLength) TRT_NOEXCEPT override;
 };  // class AttentionWeightComputationCreator
+REGISTER_TENSORRT_PLUGIN(AttentionWeightComputationCreator);
 }  // namespace trt_mtr
 #endif  // TRT_ATTN_WEIGHT_COMPUTATION_HPP

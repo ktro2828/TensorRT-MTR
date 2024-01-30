@@ -11,7 +11,7 @@ __global__ void knn_batch_kernel(
     return;
   }
 
-  xyz += static_cast<T>(pt_idx * 3);
+  xyz += pt_idx * 3;
   output += pt_idx * k;
 
   T ox = xyz[0];
@@ -64,3 +64,7 @@ cudaError_t KnnBatchLauncher(
 
   return cudaGetLastError();
 }
+
+template cudaError_t KnnBatchLauncher<float>(
+  const int n, const int m, const int k, const float * xyz, const float * query_xyz,
+  const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream);

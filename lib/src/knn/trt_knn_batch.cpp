@@ -40,7 +40,7 @@ nvinfer1::DimsExprs KnnBatch::getOutputDimensions(
   nvinfer1::DimsExprs ret;
   ret.nbDims = 2;
   ret.d[0] = inputs[0].d[0];
-  ret.d[1] = inputs[4].d[0];
+  ret.d[1] = exprBuilder.constant(mTopK);
 
   return ret;
 }
@@ -48,12 +48,8 @@ nvinfer1::DimsExprs KnnBatch::getOutputDimensions(
 bool KnnBatch::supportsFormatCombination(
   int pos, const nvinfer1::PluginTensorDesc * ioDesc, int nbInputs, int nbOutputs) TRT_NOEXCEPT
 {
-  if (pos != 4) {
-    return ioDesc[pos].format == nvinfer1::TensorFormat::kLINEAR &&
-           ioDesc[pos].type == (pos < 2 ? nvinfer1::DataType::kFLOAT : nvinfer1::DataType::kINT32);
-  } else {
-    return ioDesc[pos].type == nvinfer1::DataType::kINT32;
-  }
+  return ioDesc[pos].format == nvinfer1::TensorFormat::kLINEAR &&
+         ioDesc[pos].type == (pos < 2 ? nvinfer1::DataType::kFLOAT : nvinfer1::DataType::kINT32);
 }
 
 void KnnBatch::configurePlugin(

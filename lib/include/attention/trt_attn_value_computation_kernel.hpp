@@ -22,7 +22,7 @@
  * @param output
  */
 template <typename T>
-void AttentionValueComputationLauncher(
+cudaError_t AttentionValueComputationLauncher(
   int b, int total_query_num, int local_size, int total_value_num, int nhead, int hdim,
   const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
   const int * index_pair, const T * attn_weight, const T * value_features, T * output,
