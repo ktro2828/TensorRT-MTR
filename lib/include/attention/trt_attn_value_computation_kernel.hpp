@@ -23,7 +23,8 @@
  */
 template <typename T>
 cudaError_t AttentionValueComputationLauncher(
-  int b, int total_query_num, int local_size, int total_value_num, int nhead, int hdim,
+  const int32_t b, const int32_t total_query_num, const int32_t local_size,
+  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
   const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
   const int * index_pair, const T * attn_weight, const T * value_features, T * output,
   cudaStream_t stream);

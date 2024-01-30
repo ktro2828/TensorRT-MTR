@@ -74,8 +74,8 @@ int KnnBatchMlogK::enqueue(
   const void * const * inputs, void * const * outputs, void * workspace,
   cudaStream_t stream) TRT_NOEXCEPT
 {
-  const int n = inDesc[0].dims.d[0];
-  const int m = inDesc[1].dims.d[0];
+  const int32_t n = inDesc[0].dims.d[0];
+  const int32_t m = inDesc[1].dims.d[0];
 
   const void * xyz = inputs[0];
   const void * query_xyz = inputs[1];

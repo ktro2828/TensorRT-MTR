@@ -72,16 +72,16 @@ int AttentionValueComputation::enqueue(
   cudaStream_t stream) TRT_NOEXCEPT
 {
   // parse query_batch_cnt description
-  int batch = inDesc[0].dims.d[0];
+  const int32_t batch = inDesc[0].dims.d[0];
 
   // parse index_pair description
-  int total_query_num = inDesc[3].dims.d[0];
-  int local_size = inDesc[3].dims.d[1];
+  const int32_t total_query_num = inDesc[3].dims.d[0];
+  const int32_t local_size = inDesc[3].dims.d[1];
 
   // parse value_features description
-  int total_value_num = inDesc[5].dims.d[0];
-  int nhead = inDesc[5].dims.d[1];
-  int hdim = inDesc[5].dims.d[2];
+  const int32_t total_value_num = inDesc[5].dims.d[0];
+  const int32_t nhead = inDesc[5].dims.d[1];
+  const int32_t hdim = inDesc[5].dims.d[2];
 
   const void * query_batch_cnt = inputs[0];
   const void * key_batch_cnt = inputs[1];

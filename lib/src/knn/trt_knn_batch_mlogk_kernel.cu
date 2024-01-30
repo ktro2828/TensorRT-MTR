@@ -3,10 +3,10 @@
 
 template <typename T>
 __global__ void knn_batch_mlogk_kernel(
-  const int n, const int m, const int k, const T * xyz, const T * query_xyz, const int * batch_idxs,
-  const int * query_batch_offsets, int * output)
+  const int32_t n, const int32_t m, const int32_t k, const T * xyz, const T * query_xyz,
+  const int * batch_idxs, const int * query_batch_offsets, int * output)
 {
-  int pt_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int pt_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (pt_idx >= n) {
     return;
   }
@@ -21,7 +21,7 @@ __global__ void knn_batch_mlogk_kernel(
   T best[150];
   int best_idx[150];
 
-  int heap_len = 0;
+  int32_t heap_len = 0;
 
   for (int i = 0; i <= k; ++i) {
     best[i] = static_cast<T>(1e20);
@@ -65,7 +65,7 @@ __global__ void knn_batch_mlogk_kernel(
       best[1] = d2;
       best_idx[1] = i - start_idx;
 
-      int cur_idx = 1, son_idx;
+      int32_t cur_idx = 1, son_idx;
       while (cur_idx <= k) {
         son_idx = cur_idx << 1;
         if (son_idx > k) {
@@ -97,8 +97,8 @@ __global__ void knn_batch_mlogk_kernel(
 
 template <typename T>
 cudaError_t KnnBatchMlogKLauncher(
-  const int n, const int m, const int k, const T * xyz, const T * query_xyz, const int * batch_idxs,
-  const int * query_batch_offsets, int * output, cudaStream_t stream)
+  const int32_t n, const int32_t m, const int32_t k, const T * xyz, const T * query_xyz,
+  const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream)
 {
   dim3 blocks(DIVUP(n, THREADS_PER_BLOCK));
   dim3 threads(THREADS_PER_BLOCK);
@@ -110,5 +110,5 @@ cudaError_t KnnBatchMlogKLauncher(
 }
 
 template cudaError_t KnnBatchMlogKLauncher<float>(
-  const int n, const int m, const int k, const float * xyz, const float * query_xyz,
+  const int32_t n, const int32_t m, const int32_t k, const float * xyz, const float * query_xyz,
   const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream);

@@ -73,14 +73,13 @@ int KnnBatch::enqueue(
   const void * const * inputs, void * const * outputs, void * workspace,
   cudaStream_t stream) TRT_NOEXCEPT
 {
-  const int n = inDesc[0].dims.d[0];
-  const int m = inDesc[1].dims.d[0];
+  const int32_t n = inDesc[0].dims.d[0];
+  const int32_t m = inDesc[1].dims.d[0];
 
   const void * xyz = inputs[0];
   const void * query_xyz = inputs[1];
   const void * batch_idxs = inputs[2];
   const void * query_batch_offsets = inputs[3];
-  const void * top_k = inputs[4];
 
   void * output = outputs[0];
 
