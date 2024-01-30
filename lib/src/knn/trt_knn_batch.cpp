@@ -20,6 +20,7 @@ KnnBatch::KnnBatch(const std::string & name, const int32_t top_k)
 
 KnnBatch::KnnBatch(const std::string & name, const void * data, size_t length) : TRTPluginBase(name)
 {
+  deserialize_value(&data, &length, &mTopK);
 }
 
 KnnBatch::~KnnBatch() TRT_NOEXCEPT
@@ -145,7 +146,8 @@ void KnnBatch::serialize(void * buffer) const TRT_NOEXCEPT
 /* ====================== creator ====================== */
 KnnBatchCreator::KnnBatchCreator()
 {
-  mPluginAttributes.clear();
+  mPluginAttributes.emplace_back(
+    nvinfer1::PluginField("top_k", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
   mFC.nbFields = mPluginAttributes.size();
   mFC.fields = mPluginAttributes.data();
 }
@@ -164,12 +166,12 @@ nvinfer1::IPluginV2DynamicExt * KnnBatchCreator::createPlugin(
   const char * name, const nvinfer1::PluginFieldCollection * fc) TRT_NOEXCEPT
 {
   const nvinfer1::PluginField * fields = fc->fields;
-  int top_k;
+  int32_t top_k;
   for (int i = 0; i < fc->nbFields; ++i) {
     const char * attrName = fields[i].name;
     if (!strcmp(attrName, "top_k")) {
       ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-      top_k = *(static_cast<const int *>(fields[i].data));
+      top_k = *reinterpret_cast<const int32_t *>(fields[i].data);
     }
   }
   auto plugin = new KnnBatch(name, top_k);
