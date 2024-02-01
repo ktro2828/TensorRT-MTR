@@ -2,7 +2,8 @@
 
 template <typename T, unsigned int d>
 __global__ void attention_value_computation_kernel(
-  int b, int total_query_num, int local_size, int total_value_num, int nhead, int hdim,
+  const int32_t b, const int32_t total_query_num, const int32_t local_size,
+  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
   const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
   const int * index_pair, const T * attn_weight, const T * value_features, T * output)
 {
@@ -42,10 +43,11 @@ __global__ void attention_value_computation_kernel(
   T attn_result = 0;
   for (int i = 0; i < local_size; ++i) {
     if (shared_value_indices[i] == -1) {
-      attn_result +=
-        shared_attn_weight[i] *
-        value_features[shared_value_indices[i] * nhead * hdim + head_idx * hdim + hdim_idx];
+      continue;
     }
+    attn_result +=
+      shared_attn_weight[i] *
+      value_features[shared_value_indices[i] * nhead * hdim + head_idx * hdim + hdim_idx];
   }
   output[0] = attn_result;
 }
