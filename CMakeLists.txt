@@ -77,3 +77,11 @@ target_include_directories(attention_plugin PUBLIC
 target_include_directories(knn_plugin PUBLIC
   lib/include
 )
+
+add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
+target_link_libraries(trt_mtr attention_plugin knn_plugin)
+
+target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
+add_executable(main src/main.cpp)
+target_link_libraries(main PUBLIC trt_mtr)
