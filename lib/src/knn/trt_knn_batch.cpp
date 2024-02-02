@@ -170,7 +170,7 @@ nvinfer1::IPluginV2DynamicExt * KnnBatchCreator::createPlugin(
     const char * attrName = fields[i].name;
     if (!strcmp(attrName, "top_k")) {
       ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-      top_k = *reinterpret_cast<const int32_t *>(fields[i].data);
+      top_k = *static_cast<const int32_t *>(fields[i].data);
     }
   }
   auto plugin = new KnnBatch(name, top_k);

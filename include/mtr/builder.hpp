@@ -38,7 +38,7 @@ struct TrtDeleter
   void operator()(T * obj) const
   {
     if (obj) {
-#if TENSORRT_VERSION_MAJOR >= 8
+#if NV_TENSORRT_MAJOR >= 8
       delete obj;
 #else
       obj->destroy();
