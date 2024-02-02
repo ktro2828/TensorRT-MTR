@@ -68,11 +68,19 @@ void MTRBuilder::setup()
     cache_engine_path.replace_extension(ext);
     if (fs::exists(cache_engine_path)) {
       std::cout << "Loading... " << cache_engine_path << std::endl;
-      loadEngine(cache_engine_path);
+      if (!loadEngine(cache_engine_path)) {
+        std::cerr << "Fail to load engine" << std::endl;
+        is_initialized_ = false;
+        return;
+      }
     } else {
       std::cout << "Building... " << cache_engine_path << std::endl;
       logger_.log(nvinfer1::ILogger::Severity::kINFO, "start build engine");
-      buildEngineFromOnnx(model_filepath_, cache_engine_path);
+      if (!buildEngineFromOnnx(model_filepath_, cache_engine_path)) {
+        std::cerr << "Fail to build engine from onnx" << std::endl;
+        is_initialized_ = false;
+        return;
+      }
       logger_.log(nvinfer1::ILogger::Severity::kINFO, "End build engine");
     }
     engine_path = cache_engine_path;

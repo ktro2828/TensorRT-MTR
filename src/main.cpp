@@ -11,4 +11,6 @@ int main(int argc, char ** argv)
   auto model_path = std::string(argv[1]);
 
   auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
+
+  std::cout << "===== [SUCCESS] Finish running successfully =====" << std::endl;
 }
