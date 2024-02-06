@@ -1,5 +1,7 @@
 #include "attention/trt_attn_weight_computation_kernel.hpp"
 
+#include <stdio.h>
+
 template <typename T, unsigned int d>
 __global__ void attention_weight_computation_kernel(
   const int32_t b, const int32_t total_query_num, const int32_t local_size,
@@ -25,7 +27,7 @@ __global__ void attention_weight_computation_kernel(
   }
   __syncthreads();
 
-  if (index_pair[index] == -1) {
+  if (index_pair[index] < 0) {
     // ignore index
     return;
   }
@@ -44,7 +46,8 @@ __global__ void attention_weight_computation_kernel(
 
   T attn_weight = 0;
   for (int i = 0; i < hdim; ++i) {
-    attn_weight += key_features[i] * shared_query_features[i];
+    // TODO: fix bug
+    // attn_weight += key_features[i] * shared_query_features[i];
   }
   output[0] = attn_weight;
 }
@@ -57,7 +60,6 @@ cudaError_t AttentionWeightComputationLauncher(
   const T * query_features, const T * key_features, T * output, cudaStream_t stream)
 {
   if (hdim > 150) {
-    // TODO: WARNING
     return cudaError::cudaErrorInvalidValue;
   }
 

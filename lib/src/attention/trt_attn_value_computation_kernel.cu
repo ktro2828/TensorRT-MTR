@@ -29,7 +29,7 @@ __global__ void attention_value_computation_kernel(
     shared_attn_weight[i] = attn_weight[query_idx * local_size * nhead + i * nhead + head_idx];
 
     cur_key_idx = index_pair[query_idx * local_size + i];
-    if (cur_key_idx == -1) {
+    if (cur_key_idx < 0) {
       shared_value_indices[i] = -1;
       continue;
     }
@@ -45,9 +45,10 @@ __global__ void attention_value_computation_kernel(
     if (shared_value_indices[i] == -1) {
       continue;
     }
-    attn_result +=
-      shared_attn_weight[i] *
-      value_features[shared_value_indices[i] * nhead * hdim + head_idx * hdim + hdim_idx];
+    // TODO: fix bug
+    // attn_result +=
+    //   shared_attn_weight[i] *
+    //   value_features[shared_value_indices[i] * nhead * hdim + head_idx * hdim + hdim_idx];
   }
   output[0] = attn_result;
 }
@@ -61,7 +62,6 @@ cudaError_t AttentionValueComputationLauncher(
   cudaStream_t stream)
 {
   if (local_size > 512) {
-    // TODO: WARNING
     return cudaError::cudaErrorInvalidValue;
   }
 

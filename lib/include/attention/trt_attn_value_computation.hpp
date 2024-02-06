@@ -13,7 +13,7 @@ namespace trt_mtr
  * @param index_pair_batch <int; [Q]>
  * @param index_pair <int; [Q, L]>
  * @param attn_weight <float; [Q, L, H]>
- * @param value_features <float; [Q, H, D]>
+ * @param value_features <float; [V, H, D]>
  * @return outputs <float; [Q, H, D]>
  */
 class AttentionValueComputation : public TRTPluginBase
