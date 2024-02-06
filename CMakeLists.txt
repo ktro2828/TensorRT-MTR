@@ -30,6 +30,7 @@ foreach(libName ${TRT_PLUGINS})
   list(APPEND TRT_PLUGIN_LIBS ${${libName}_lib})
 endforeach()
 
+# TRT plugins
 cuda_add_library(custom_plugin SHARED
   lib/src/attention/trt_attn_value_computation_kernel.cu
   lib/src/attention/trt_attn_value_computation.cpp
@@ -53,6 +54,22 @@ target_include_directories(custom_plugin PUBLIC
   lib/include
 )
 
+# preprocess and postprocess kernels
+cuda_add_library(custom_kernel SHARED
+  lib/src/preprocess/preprocess_kernel.cu
+)
+target_link_libraries(custom_kernel
+  ${CUDA_LIBRARIES}
+  ${CUBLAS_LIBRARIES}
+  ${CUDNN_LIBRARIES}
+  ${CUDA_npp_LIBRARY}
+  ${CUDA_nppc_LIBRARY}
+  ${CUDA_npps_LIBRARY})
+target_include_directories(custom_kernel PUBLIC
+  lib/include
+)
+
+# MTR
 add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
 target_link_libraries(trt_mtr custom_plugin)
 target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
