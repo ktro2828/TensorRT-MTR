@@ -1,6 +1,8 @@
 #ifndef MTR__BUILDER_HPP_
 #define MTR__BUILDER_HPP_
 
+#include "mtr/logger.hpp"
+
 #include <NvInfer.h>
 #include <NvOnnxParser.h>
 
@@ -16,21 +18,6 @@ namespace fs = ::std::filesystem;
 
 namespace mtr
 {
-class Logger : public nvinfer1::ILogger
-{
-private:
-  bool verbose_{false};
-
-public:
-  explicit Logger(const bool verbose = true) : verbose_(verbose) {}
-
-  void log(Severity severity, const char * msg) noexcept override
-  {
-    if (verbose_ || ((severity != Severity::kINFO) && (severity != Severity::kVERBOSE))) {
-      std::cout << msg << std::endl;
-    }
-  }
-};  // class Logger
 
 template <typename T>
 struct TrtDeleter

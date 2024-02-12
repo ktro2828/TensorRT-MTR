@@ -140,6 +140,32 @@ bool MTRBuilder::buildEngineFromOnnx(
     return false;
   }
 
+  int num_available_dla = builder->getNbDLACores();
+  if (build_config_->dla_core_id != -1) {
+    if (num_available_dla > 0) {
+      std::cout << "###" << num_available_dla << " DLAs are supported! ###" << std::endl;
+    } else {
+      std::cout << "###Warning : "
+                << "No DLA is supported! ###" << std::endl;
+    }
+    config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+    config->setDLACore(build_config_->dla_core_id);
+#if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8200
+    config->setFlag(nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+#else
+    config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
+#endif
+    config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+  }
+  if (precision_ == "fp16" || precision_ == "int8") {
+    config->setFlag(nvinfer1::BuilderFlag::kFP16);
+  }
+#if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8400
+  config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_size_);
+#else
+  config->setMaxWorkspaceSize(max_workspace_size_);
+#endif
+
   auto parser = TrtUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, logger_));
   if (!parser->parseFromFile(
         filepath.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kERROR))) {
