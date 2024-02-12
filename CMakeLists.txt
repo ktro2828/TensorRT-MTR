@@ -57,6 +57,8 @@ target_include_directories(custom_plugin PUBLIC
 # preprocess and postprocess kernels
 cuda_add_library(custom_kernel SHARED
   lib/src/preprocess/preprocess_kernel.cu
+  lib/src/preprocess/agent_preprocess_kernel.cu
+  lib/src/preprocess/polyline_preprocess_kernel.cu
 )
 target_link_libraries(custom_kernel
   ${CUDA_LIBRARIES}
@@ -71,7 +73,7 @@ target_include_directories(custom_kernel PUBLIC
 
 # MTR
 add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
-target_link_libraries(trt_mtr custom_plugin)
+target_link_libraries(trt_mtr custom_plugin custom_kernel)
 target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_executable(main src/main.cpp)

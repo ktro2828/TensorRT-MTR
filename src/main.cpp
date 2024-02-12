@@ -12,5 +12,9 @@ int main(int argc, char ** argv)
 
   auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
 
-  std::cout << "===== [SUCCESS] Finish running successfully =====" << std::endl;
+  if (!model->doInference()) {
+    std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
+  } else {
+    std::cout << "===== [SUCCESS] Finish running successfully =====" << std::endl;
+  }
 }

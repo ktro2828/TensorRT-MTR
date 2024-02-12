@@ -6,18 +6,26 @@
 /**
  * @brief
  *
- * @param num_targets
- * @param num_agents
+ * @param B
+ * @param N
+ * @param T
+ * @param D
  * @param sdc_index
  * @param target_index
- * @param agent_trajectory
- * @param out_trajectory
+ * @param object_type_index
+ * @param timestamps
+ * @param in_trajectory
+ * @param out_data
  * @param out_mask
+ * @param out_last_pos
+ * @param stream
  * @return cudaError_t
  */
-cudaError_t generateTargetCentricTrajectoryLauncher(
-  const int num_targets, const int num_agents, const int sdc_index, const int * target_index,
-  const float * agent_trajectory, float * out_trajectory, bool * out_mask);
+cudaError_t agentPreprocessLauncher(
+  const int B, const int N, const int T, const int D, const int C, const int sdc_index,
+  const int * target_index, const int * object_type_index, const float * timestamps,
+  const float * in_trajectory, float * out_data, bool * out_mask, float * out_last_pos,
+  cudaStream_t stream);
 
 /**
  * @brief
@@ -27,7 +35,7 @@ cudaError_t generateTargetCentricTrajectoryLauncher(
  * @param out_mask
  * @return cudaError_t
  */
-cudaError_t generateTargetCentricPolylineLauncher(
+cudaError_t polylinePreprocessLauncher(
   const float * polylines, float * out_polylines, bool * out_mask);
 
 #endif  // PREPROCESS__PREPROCESS_KERNEL_HPP_
