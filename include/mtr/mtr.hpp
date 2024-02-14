@@ -39,7 +39,7 @@ public:
   bool doInference(AgentData & agent_data);
 
 private:
-  void init_cuda_ptr(AgentData & agent_data);
+  void initCudaPtr(AgentData & agent_data);
   bool preProcess(AgentData & agent_data);
   bool postProcess();
 
@@ -70,7 +70,7 @@ private:
   std::unique_ptr<bool[]> h_debug_in_trajectory_mask_{nullptr};
   std::unique_ptr<float[]> h_debug_in_last_pos_{nullptr};
 
-  void debug_preprocess(const AgentData & agent_data);
+  void debugPreprocess(const AgentData & agent_data);
 };  // class TrtMTR
 }  // namespace mtr
 #endif  // MTR__NETWORK_HPP_

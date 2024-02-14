@@ -24,7 +24,7 @@ TrtMTR::TrtMTR(
 
 bool TrtMTR::doInference(AgentData & agent_data)
 {
-  init_cuda_ptr(agent_data);
+  initCudaPtr(agent_data);
 
   if (!preProcess(agent_data)) {
     return false;
@@ -32,7 +32,7 @@ bool TrtMTR::doInference(AgentData & agent_data)
   return true;
 }
 
-void TrtMTR::init_cuda_ptr(AgentData & agent_data)
+void TrtMTR::initCudaPtr(AgentData & agent_data)
 {
   // !!TODO!!
 
@@ -90,12 +90,12 @@ bool TrtMTR::preProcess(AgentData & agent_data)
     d_in_last_pos_.get(), stream_));
   event_debugger_.printElapsedTime(stream_);
 
-  debug_preprocess(agent_data);
+  debugPreprocess(agent_data);
 
   return true;
 }
 
-void TrtMTR::debug_preprocess(const AgentData & agent_data)
+void TrtMTR::debugPreprocess(const AgentData & agent_data)
 {
   // DEBUG
   const size_t D = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
