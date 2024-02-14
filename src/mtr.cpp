@@ -3,15 +3,13 @@
 #include "preprocess/agent_preprocess_kernel.cuh"
 #include "preprocess/preprocess_kernel.hpp"
 
-#include <math.h>
-
 namespace mtr
 {
 TrtMTR::TrtMTR(
-  const std::string & model_path, const std::string & precision,
-  const std::vector<std::string> target_labels, const BatchConfig & batch_config,
-  const size_t max_workspace_size, const BuildConfig & build_config)
-: target_labels_(target_labels)
+  const std::string & model_path, const std::string & precision, const MtrConfig & config,
+  const BatchConfig & batch_config, const size_t max_workspace_size,
+  const BuildConfig & build_config)
+: config_(config)
 {
   builder_ = std::make_unique<MTRBuilder>(
     model_path, precision, batch_config, max_workspace_size, build_config);
@@ -20,107 +18,144 @@ TrtMTR::TrtMTR(
   if (!builder_->isInitialized()) {
     return;
   }
+
+  CHECK_CUDA_ERROR(cudaStreamCreate(&stream_));
 }
 
-bool TrtMTR::doInference()
+bool TrtMTR::doInference(AgentData & agent_data)
 {
-  if (!preProcess()) {
+  init_cuda_ptr(agent_data);
+
+  if (!preProcess(agent_data)) {
     return false;
   }
-  std::cout << "SUCCESS: success to inference" << std::endl;
   return true;
 }
 
-bool TrtMTR::preProcess()
+void TrtMTR::init_cuda_ptr(AgentData & agent_data)
 {
-  constexpr int B = 2;
-  constexpr int N = 4;
-  constexpr int T = 5;
-  constexpr int D = 12;
-  constexpr int C = 3;
-  constexpr int sdc_index = 1;
+  // !!TODO!!
 
-  int h_target_index[B] = {0, 2};
-  int h_object_type_index[N] = {0, 0, 2, 1};
-  float h_timestamps[T] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
-  float h_trajectory[N][T][D] = {
-    {
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, M_PI / 2.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-      {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, M_PI / 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 1.0f},
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-    },
-    {
-      {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, M_PI / 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 0.0f},
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 0.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 0.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 1.0f},
-    },
-    {
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 1.0f},
-      {7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, M_PI / 2.0f, 7.0f, 7.0f, 7.0f, 7.0f, 1.0f},
-    },
-    {
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 0.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 0.0f},
-      {7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, M_PI / 2.0f, 7.0f, 7.0f, 7.0f, 7.0f, 0.0f},
-      {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, M_PI / 2.0f, 8.0f, 8.0f, 8.0f, 8.0f, 1.0f},
-    },
-  };
+  // source data
+  d_target_index_ = cuda::make_unique<int[]>(agent_data.TargetNum);
+  d_label_index_ = cuda::make_unique<int[]>(agent_data.AgentNum);
+  d_timestamps_ = cuda::make_unique<float[]>(agent_data.TimeLength);
+  d_trajectory_ =
+    cuda::make_unique<float[]>(agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim);
 
-  int *d_target_index, *d_object_type_index;
-  float *d_timestamps, *d_trajectory;
-  // allocate input memory
-  cudaMalloc(reinterpret_cast<void **>(&d_target_index), sizeof(int) * B);
-  cudaMalloc(reinterpret_cast<void **>(&d_object_type_index), sizeof(int) * N);
-  cudaMalloc(reinterpret_cast<void **>(&d_timestamps), sizeof(float) * T);
-  cudaMalloc(reinterpret_cast<void **>(&d_trajectory), sizeof(float) * N * T * D);
-  // copy input data
-  cudaMemcpy(d_target_index, h_target_index, sizeof(int) * B, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_object_type_index, h_object_type_index, sizeof(int) * N, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_timestamps, h_timestamps, sizeof(float) * T, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_trajectory, h_trajectory, sizeof(float) * N * T * D, cudaMemcpyHostToDevice);
+  // preprocessed input
+  const size_t D = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  d_in_trajectory_ = cuda::make_unique<float[]>(
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D);
+  d_in_trajectory_mask_ =
+    cuda::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
+  d_in_last_pos_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
 
-  float *d_out_data, *d_out_last_pos;
-  bool * d_out_mask;
-  size_t outDataSize = sizeof(float) * B * N * T * (D - 2 + C + 2 + T + 1 + 2);
-  size_t outMaskSize = sizeof(bool) * B * N * T;
-  size_t outLastPosSize = sizeof(float) * B * N * 3;
-  // allocate output memory
-  cudaMalloc(reinterpret_cast<void **>(&d_out_data), outDataSize);
-  cudaMalloc(reinterpret_cast<void **>(&d_out_mask), outMaskSize);
-  cudaMalloc(reinterpret_cast<void **>(&d_out_last_pos), outLastPosSize);
+  // outputs
+  d_out_scores_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
+  d_out_trajectory_ = cuda::make_unique<float[]>(
+    agent_data.TargetNum * config_.num_mode * config_.num_future);  // TODO output dimension
 
-  cudaStream_t stream;
-  cudaStreamCreate(&stream);
+  // debug
+  h_debug_in_trajectory_ = std::make_unique<float[]>(
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D);
+  h_debug_in_trajectory_mask_ =
+    std::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
+  h_debug_in_last_pos_ = std::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
+}
+
+bool TrtMTR::preProcess(AgentData & agent_data)
+{
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_target_index_.get(), agent_data.target_index.data(), sizeof(int) * agent_data.TargetNum,
+    cudaMemcpyHostToDevice, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_label_index_.get(), agent_data.label_index.data(), sizeof(int) * agent_data.AgentNum,
+    cudaMemcpyHostToDevice, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_timestamps_.get(), agent_data.timestamps.data(), sizeof(float) * agent_data.TimeLength,
+    cudaMemcpyHostToDevice, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_trajectory_.get(), agent_data.data_ptr(),
+    sizeof(float) * agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim,
+    cudaMemcpyHostToDevice, stream_));
 
   // DEBUG
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventRecord(start);
-  cudaEventQuery(start);
+  event_debugger_.createEvent(stream_);
   // Preprocess
-  auto error_code = agentPreprocessLauncher(
-    B, N, T, D, C, sdc_index, d_target_index, d_object_type_index, d_timestamps, d_trajectory,
-    d_out_data, d_out_mask, d_out_last_pos, stream);
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float elapsed_time;
-  cudaEventElapsedTime(&elapsed_time, start, stop);
-  printf("Processing time = %g ms.\n", elapsed_time);
+  CHECK_CUDA_ERROR(agentPreprocessLauncher(
+    agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, agent_data.StateDim,
+    agent_data.ClassNum, agent_data.sdc_index, d_target_index_.get(), d_label_index_.get(),
+    d_timestamps_.get(), d_trajectory_.get(), d_in_trajectory_.get(), d_in_trajectory_mask_.get(),
+    d_in_last_pos_.get(), stream_));
+  event_debugger_.printElapsedTime(stream_);
 
-  if (error_code != cudaSuccess) {
-    std::cerr << "ERROR: " << cudaGetErrorString(error_code) << std::endl;
-    return false;
-  } else {
-    return true;
+  debug_preprocess(agent_data);
+
+  return true;
+}
+
+void TrtMTR::debug_preprocess(const AgentData & agent_data)
+{
+  // DEBUG
+  const size_t D = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_trajectory_.get(), d_in_trajectory_.get(),
+    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_trajectory_mask_.get(), d_in_trajectory_mask_.get(),
+    sizeof(bool) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_last_pos_.get(), d_in_last_pos_.get(),
+    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * 3, cudaMemcpyDeviceToHost,
+    stream_));
+
+  std::cout << "=== Trajectory data ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
+      std::cout << "  Agent " << n << ":\n";
+      for (size_t t = 0; t < agent_data.TimeLength; ++t) {
+        std::cout << "  Time " << t << ": ";
+        for (size_t d = 0; d < D; ++d) {
+          std::cout << h_debug_in_trajectory_.get()
+                         [(b * agent_data.AgentNum * agent_data.TimeLength +
+                           n * agent_data.TimeLength + t) *
+                            D +
+                          d]
+                    << " ";
+        }
+        std::cout << "\n";
+      }
+    }
+  }
+
+  std::cout << "=== Trajectory mask ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
+      std::cout << "  Agent " << n << ": ";
+      for (size_t t = 0; t < agent_data.TimeLength; ++t) {
+        std::cout
+          << h_debug_in_trajectory_.get()[(b * agent_data.AgentNum + n) * agent_data.TimeLength + t]
+          << " ";
+      }
+      std::cout << "\n";
+    }
+  }
+
+  std::cout << "=== Last pos ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
+      std::cout << "  Agent " << n << ": ";
+      for (size_t d = 0; d < 3; ++d) {
+        std::cout << h_debug_in_last_pos_.get()[(b * agent_data.AgentNum + n) * 3 + d] << " ";
+      }
+      std::cout << "\n";
+    }
   }
 }
 }  // namespace mtr
