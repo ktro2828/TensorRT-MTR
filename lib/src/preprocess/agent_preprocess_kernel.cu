@@ -23,9 +23,9 @@ __global__ void agentPreprocessKernel(
   const float x = in_trajectory[src_trajectory_idx];
   const float y = in_trajectory[src_trajectory_idx + 1];
   const float z = in_trajectory[src_trajectory_idx + 2];
-  const float dx = in_trajectory[src_trajectory_idx + 3];
-  const float dy = in_trajectory[src_trajectory_idx + 4];
-  const float dz = in_trajectory[src_trajectory_idx + 5];
+  const float length = in_trajectory[src_trajectory_idx + 3];
+  const float width = in_trajectory[src_trajectory_idx + 4];
+  const float height = in_trajectory[src_trajectory_idx + 5];
   const float yaw = in_trajectory[src_trajectory_idx + 6];
   const float vx = in_trajectory[src_trajectory_idx + 7];
   const float vy = in_trajectory[src_trajectory_idx + 8];
@@ -55,9 +55,9 @@ __global__ void agentPreprocessKernel(
   out_data[out_idx] = trans_x;
   out_data[out_idx + 1] = trans_y;
   out_data[out_idx + 2] = trans_z;
-  out_data[out_idx + 3] = dx;
-  out_data[out_idx + 4] = dy;
-  out_data[out_idx + 5] = dz;
+  out_data[out_idx + 3] = length;
+  out_data[out_idx + 4] = width;
+  out_data[out_idx + 5] = height;
 
   // --- onehot ---
   const int onehot_idx = out_idx + 6;

@@ -16,10 +16,10 @@ struct AgentState
   AgentState() : data_({0.0f}) {}
 
   AgentState(
-    const float x, const float y, const float z, const float dx, const float dy, const float dz,
-    const float yaw, const float vx, const float vy, const float ax, const float ay,
-    const float is_valid)
-  : data_({x, y, z, dx, dy, dz, yaw, vx, vy, ax, ay, is_valid})
+    const float x, const float y, const float z, const float length, const float width,
+    const float height, const float yaw, const float vx, const float vy, const float ax,
+    const float ay, const float is_valid)
+  : data_({x, y, z, length, width, height, yaw, vx, vy, ax, ay, is_valid})
   {
   }
 
