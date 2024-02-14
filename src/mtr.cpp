@@ -138,9 +138,9 @@ void TrtMTR::debug_preprocess(const AgentData & agent_data)
     for (size_t n = 0; n < agent_data.AgentNum; ++n) {
       std::cout << "  Agent " << n << ": ";
       for (size_t t = 0; t < agent_data.TimeLength; ++t) {
-        std::cout
-          << h_debug_in_trajectory_.get()[(b * agent_data.AgentNum + n) * agent_data.TimeLength + t]
-          << " ";
+        std::cout << h_debug_in_trajectory_mask_
+                       .get()[(b * agent_data.AgentNum + n) * agent_data.TimeLength + t]
+                  << " ";
       }
       std::cout << "\n";
     }
