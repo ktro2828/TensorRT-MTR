@@ -5,28 +5,29 @@ Support of inference with TensorRT for [sshaoshuai/MTR](https://github.com/sshao
 ## Network
 
 ### Inputs
-- `trajectory <float; [N, A, Tp, Da]>`
-- `trajectory_mask <bool; [N, A, Tp]>`
-- `polyline <float; [N, K, P, Dp]>`
-- `polyline_mask <bool; [N, K, P]>`
-- `polyline_center <float; [N, K, 3]>`
-- `last_pos <float; [N, A, 3]`
-- `track_index <int; [N]>`
-- `label_index <int; [N]>`
+- `trajectory <float; [B, N, Tp, Da]>`
+- `trajectory_mask <bool: [B, N, Tp]>`
+- `polyline <float: [B, K, P, Dp]>`
+- `polyline_mask <bool: [B, K, P]>`
+- `polyline_center <float: [B, K, 3]>`
+- `last_pos <float; [B, N, 3]`
+- `track_index <int: [B]>`
+- `label_index <int: [N]>`
+- `intention_points <float: [B, 64, 3]>`
 
 where, 
 
-- `N` ...The number of targets
-- `A` ...The number of agents
+- `B` ...The number of target agents
+- `N` ...The number of all agents
 - `Tp` ...The number of past frames(=`11`)
-- `Da` ...The number of agent tensor dimensions(=`29`)
+- `Da` ...The number of agent state dimensions(=`29`)
 - `K` ...The max number of polylines(=`768`)
 - `P` ...The max number of points contained in each polyline(=`20`)
-- `Dp` ...The number of polyline tensor dimensions(=`9`)
+- `Dp` ...The number of polyline state dimensions(=`9`)
 
 ### Outputs
-- `scores <float; [N, M]>`
-- `trajectory <float; [N, M, Tf, Dt]>`
+- `scores <float: [N, M]>`
+- `trajectory <float: [N, M, Tf, Dt]>`
 
 where,
 
@@ -49,7 +50,16 @@ cmake --build build -j${nproc}
 ./build/main <PATH_TO_ONNX_OR_ENGINE>
 ```
 
+### Unittest
+
+```shell
+# test agent pre-process
+./build/agent_test
+```
+
 ## TODO
 
 - [x] Add TensorRT custom plugins
+- [ ] Add pre-process
+- [ ] Add post-process
 - [ ] Add inference sample
