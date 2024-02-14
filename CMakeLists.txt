@@ -78,3 +78,7 @@ target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_executable(main src/main.cpp)
 target_link_libraries(main PUBLIC trt_mtr)
+
+# unittest
+add_executable(test_agent test/agent_test.cpp)
+target_include_directories(test_agent PUBLIC include)
