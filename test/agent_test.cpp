@@ -73,6 +73,7 @@ int main()
   }
   mtr::AgentData data(histories, sdc_index, target_index, label_index, timestamps);
 
+  std::cout << "=== All agents data ===\n";
   const float * data_ptr = data.data_ptr();
   for (size_t n = 0; n < N; ++n) {
     std::cout << "Agent: " << n << "\n";
@@ -82,5 +83,15 @@ int main()
       }
       std::cout << "\n";
     }
+  }
+
+  std::cout << "=== Target agents data ===\n";
+  const float * target_data_ptr = data.target_data_ptr();
+  for (size_t b = 0; b < B; ++b) {
+    std::cout << "Target: " << b << "\n";
+    for (size_t d = 0; d < D; ++d) {
+      std::cout << *(target_data_ptr + b * D + d) << " ";
+    }
+    std::cout << "\n";
   }
 }

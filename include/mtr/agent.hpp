@@ -48,7 +48,7 @@ struct AgentHistory
 
   void push_back(const float current_time, AgentState & state) noexcept
   {
-    const float * s = state.data_ptr();
+    const auto s = state.data_ptr();
     for (size_t d = 0; d < StateDim; ++d) {
       data_.push_back(*(s + d));
     }
@@ -91,6 +91,14 @@ struct AgentData
         }
       }
     }
+
+    target_data_.reserve(TargetNum * StateDim);
+    for (const auto & idx : target_index) {
+      const auto target_ptr = histories.at(idx).data_ptr();
+      for (size_t d = 0; d < StateDim; ++d) {
+        target_data_.push_back(*(target_ptr + (TimeLength - 1) * StateDim + d));
+      }
+    }
   }
 
   const size_t TargetNum;
@@ -106,8 +114,11 @@ struct AgentData
 
   float * data_ptr() noexcept { return data_.data(); }
 
+  float * target_data_ptr() noexcept { return target_data_.data(); }
+
 private:
   std::vector<float> data_;
+  std::vector<float> target_data_;
 };
 
 }  // namespace mtr
