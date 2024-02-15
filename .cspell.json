@@ -5,6 +5,8 @@
         "ONNX",
         "polyline",
         "polylines",
+        "Postprocess",
+        "Preprocess",
         "trtexec"
     ]
 }

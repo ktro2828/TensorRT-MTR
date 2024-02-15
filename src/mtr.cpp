@@ -1,5 +1,6 @@
 #include "mtr/mtr.hpp"
 
+#include "postprocess/postprocess_kernel.cuh"
 #include "preprocess/agent_preprocess_kernel.cuh"
 
 namespace mtr
@@ -41,26 +42,33 @@ void TrtMTR::initCudaPtr(AgentData & agent_data)
   d_timestamps_ = cuda::make_unique<float[]>(agent_data.TimeLength);
   d_trajectory_ =
     cuda::make_unique<float[]>(agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim);
+  d_target_state_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.StateDim);
+  d_intention_points_ = cuda::make_unique<float[]>(agent_data.AgentNum * 64 * 2);
 
   // preprocessed input
-  const size_t D = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  const size_t inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
   d_in_trajectory_ = cuda::make_unique<float[]>(
-    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D);
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim);
   d_in_trajectory_mask_ =
     cuda::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   d_in_last_pos_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
 
   // outputs
-  d_out_scores_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
+  constexpr size_t outDim = 7;
+  d_out_score_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
   d_out_trajectory_ = cuda::make_unique<float[]>(
-    agent_data.TargetNum * config_.num_mode * config_.num_future);  // TODO output dimension
+    agent_data.TargetNum * config_.num_mode * config_.num_future * outDim);
 
   // debug
   h_debug_in_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D);
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim);
   h_debug_in_trajectory_mask_ =
     std::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   h_debug_in_last_pos_ = std::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
+
+  h_debug_out_score_ = std::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
+  h_debug_out_trajectory_ = std::make_unique<float[]>(
+    agent_data.TargetNum * config_.num_mode * config_.num_future * outDim);
 }
 
 bool TrtMTR::preProcess(AgentData & agent_data)
@@ -78,6 +86,9 @@ bool TrtMTR::preProcess(AgentData & agent_data)
     d_trajectory_.get(), agent_data.data_ptr(),
     sizeof(float) * agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim,
     cudaMemcpyHostToDevice, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_target_state_.get(), agent_data.target_data_ptr(),
+    sizeof(float) * agent_data.TargetNum * agent_data.StateDim, cudaMemcpyHostToDevice));
 
   // DEBUG
   event_debugger_.createEvent(stream_);
@@ -94,13 +105,29 @@ bool TrtMTR::preProcess(AgentData & agent_data)
   return true;
 }
 
+bool TrtMTR::postProcess(AgentData & agent_data)
+{
+  const int inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  constexpr int outDim = 7;
+
+  // DEBUG
+  event_debugger_.createEvent(stream_);
+  // Postprocess
+  CHECK_CUDA_ERROR(postprocessLauncher(
+    agent_data.TargetNum, config_.num_mode, agent_data.TimeLength, inDim, config_.num_future,
+    outDim, d_target_state_.get(), d_out_score_.get(), d_out_trajectory_.get(), stream_));
+  event_debugger_.printElapsedTime(stream_);
+
+  return true;
+}
+
 void TrtMTR::debugPreprocess(const AgentData & agent_data)
 {
   // DEBUG
-  const size_t D = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  const size_t inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_in_trajectory_.get(), d_in_trajectory_.get(),
-    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * D,
+    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim,
     cudaMemcpyDeviceToHost, stream_));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_in_trajectory_mask_.get(), d_in_trajectory_mask_.get(),
@@ -118,11 +145,11 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data)
       std::cout << "  Agent " << n << ":\n";
       for (size_t t = 0; t < agent_data.TimeLength; ++t) {
         std::cout << "  Time " << t << ": ";
-        for (size_t d = 0; d < D; ++d) {
+        for (size_t d = 0; d < inDim; ++d) {
           std::cout << h_debug_in_trajectory_.get()
                          [(b * agent_data.AgentNum * agent_data.TimeLength +
                            n * agent_data.TimeLength + t) *
-                            D +
+                            inDim +
                           d]
                     << " ";
         }
@@ -154,6 +181,47 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data)
         std::cout << h_debug_in_last_pos_.get()[(b * agent_data.AgentNum + n) * 3 + d] << " ";
       }
       std::cout << "\n";
+    }
+  }
+}
+
+void TrtMTR::debugPostprocess(const AgentData & agent_data)
+{
+  // DEBUG
+  constexpr size_t outDim = 7;
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_out_score_.get(), d_out_score_.get(),
+    sizeof(float) * agent_data.TargetNum * config_.num_mode, cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_out_trajectory_.get(), d_out_trajectory_.get(),
+    sizeof(float) * agent_data.TargetNum * config_.num_mode * config_.num_future * outDim,
+    cudaMemcpyDeviceToHost, stream_));
+
+  std::cout << "=== Out score === \n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t m = 0; m < config_.num_mode; ++m) {
+      std::cout << h_debug_out_score_.get()[b * config_.num_mode + m] << " ";
+    }
+    std::cout << "\n";
+  }
+
+  std::cout << "=== Out trajectory === \n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t m = 0; m < config_.num_mode; ++m) {
+      std::cout << "  Mode " << m << ":\n";
+      for (size_t t = 0; t < config_.num_future; ++t) {
+        std::cout << "  Time " << t << ": ";
+        for (size_t d = 0; d < outDim; ++d) {
+          std::cout << h_debug_out_trajectory_.get()
+                         [(b * config_.num_mode * config_.num_future + m * config_.num_future + t) *
+                            outDim +
+                          d]
+                    << " ";
+        }
+        std::cout << "\n";
+      }
     }
   }
 }

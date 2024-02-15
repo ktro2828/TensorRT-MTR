@@ -41,7 +41,7 @@ public:
 private:
   void initCudaPtr(AgentData & agent_data);
   bool preProcess(AgentData & agent_data);
-  bool postProcess();
+  bool postProcess(AgentData & agent_data);
 
   // model parameters
   MtrConfig config_;
@@ -54,6 +54,8 @@ private:
   cuda::unique_ptr<int[]> d_label_index_{nullptr};
   cuda::unique_ptr<float[]> d_timestamps_{nullptr};
   cuda::unique_ptr<float[]> d_trajectory_{nullptr};
+  cuda::unique_ptr<float[]> d_target_state_{nullptr};
+  cuda::unique_ptr<float[]> d_intention_points_{nullptr};
 
   // preprocessed inputs
   cuda::unique_ptr<float[]> d_in_trajectory_{nullptr};
@@ -61,7 +63,7 @@ private:
   cuda::unique_ptr<float[]> d_in_last_pos_{nullptr};
 
   // outputs
-  cuda::unique_ptr<float[]> d_out_scores_{nullptr};
+  cuda::unique_ptr<float[]> d_out_score_{nullptr};
   cuda::unique_ptr<float[]> d_out_trajectory_{nullptr};
 
   // debug
@@ -69,8 +71,11 @@ private:
   std::unique_ptr<float[]> h_debug_in_trajectory_{nullptr};
   std::unique_ptr<bool[]> h_debug_in_trajectory_mask_{nullptr};
   std::unique_ptr<float[]> h_debug_in_last_pos_{nullptr};
+  std::unique_ptr<float[]> h_debug_out_score_{nullptr};
+  std::unique_ptr<float[]> h_debug_out_trajectory_{nullptr};
 
   void debugPreprocess(const AgentData & agent_data);
+  void debugPostprocess(const AgentData & agent_data);
 };  // class TrtMTR
 }  // namespace mtr
 #endif  // MTR__NETWORK_HPP_

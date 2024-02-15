@@ -58,6 +58,7 @@ target_include_directories(custom_plugin PUBLIC
 cuda_add_library(custom_kernel SHARED
   lib/src/preprocess/agent_preprocess_kernel.cu
   lib/src/preprocess/polyline_preprocess_kernel.cu
+  lib/src/postprocess/postprocess_kernel.cu
 )
 target_link_libraries(custom_kernel
   ${CUDA_LIBRARIES}
