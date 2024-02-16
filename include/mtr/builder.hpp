@@ -112,6 +112,8 @@ private:
   bool buildEngineFromOnnx(
     const std::string & filepath, const std::string & output_engine_filepath);
 
+  bool enqueueV2(void ** bindings, cudaStream_t stream, cudaEvent_t * inputConsumed);
+
   Logger logger_;
   TrtUniquePtr<nvinfer1::IRuntime> runtime_;
   TrtUniquePtr<nvinfer1::ICudaEngine> engine_;

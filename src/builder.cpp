@@ -312,4 +312,10 @@ bool MTRBuilder::isInitialized() const
 {
   return is_initialized_;
 }
+
+bool MTRBuilder::enqueueV2(void ** bindings, cudaStream_t stream, cudaEvent_t * inputConsumed)
+{
+  return context_->enqueueV2(bindings, stream, inputConsumed);
+}
+
 }  // namespace mtr
