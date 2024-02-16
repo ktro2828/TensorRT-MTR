@@ -69,7 +69,7 @@ mtr::AgentData load_agent_data()
       auto ay = trajectory[n][t][10];
       auto is_valid = trajectory[n][t][11];
       mtr::AgentState state(x, y, z, length, width, height, yaw, vx, vy, ax, ay, is_valid);
-      history.push_back(static_cast<float>(t), state);
+      history.update(static_cast<float>(t), state);
     }
     histories.emplace_back(history);
   }

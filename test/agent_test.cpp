@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include <cassert>
 #include <iostream>
 #include <vector>
 
@@ -53,21 +54,32 @@ int main()
   for (size_t n = 0; n < N; ++n) {
     mtr::AgentHistory history("foo", T);
     for (size_t t = 0; t < T; ++t) {
-      const size_t idx = n * T * D + t * D;
-      auto x = trajectory[n][t][0];
-      auto y = trajectory[n][t][1];
-      auto z = trajectory[n][t][2];
-      auto length = trajectory[n][t][3];
-      auto width = trajectory[n][t][4];
-      auto height = trajectory[n][t][5];
-      auto yaw = trajectory[n][t][6];
-      auto vx = trajectory[n][t][7];
-      auto vy = trajectory[n][t][8];
-      auto ax = trajectory[n][t][9];
-      auto ay = trajectory[n][t][10];
-      auto is_valid = trajectory[n][t][11];
-      mtr::AgentState state(x, y, z, length, width, height, yaw, vx, vy, ax, ay, is_valid);
-      history.push_back(static_cast<float>(t), state);
+      if (t % 2 == 0) {
+        const size_t idx = n * T * D + t * D;
+        auto x = trajectory[n][t][0];
+        auto y = trajectory[n][t][1];
+        auto z = trajectory[n][t][2];
+        auto length = trajectory[n][t][3];
+        auto width = trajectory[n][t][4];
+        auto height = trajectory[n][t][5];
+        auto yaw = trajectory[n][t][6];
+        auto vx = trajectory[n][t][7];
+        auto vy = trajectory[n][t][8];
+        auto ax = trajectory[n][t][9];
+        auto ay = trajectory[n][t][10];
+        auto is_valid = trajectory[n][t][11];
+        mtr::AgentState state(x, y, z, length, width, height, yaw, vx, vy, ax, ay, is_valid);
+        history.update(static_cast<float>(t), state);
+        if (is_valid == 1.0f) {
+          assert(("history.is_valid_latest() should be true", history.is_valid_latest()));
+        } else {
+          assert(("history.is_valid_latest() should be false", !history.is_valid_latest()));
+        }
+      } else {
+        history.update_empty();
+        assert(("history.is_valid_latest() should be false", !history.is_valid_latest()));
+      }
+      assert(("history.length() != T", history.length() == T));
     }
     histories.emplace_back(history);
   }
@@ -88,7 +100,7 @@ int main()
   std::cout << "=== Target agents data ===\n";
   const float * target_data_ptr = data.target_data_ptr();
   for (size_t b = 0; b < B; ++b) {
-    std::cout << "Target: " << b << "\n";
+    std::cout << "Target: " << b << " (index=" << target_index.at(b) << ")\n";
     for (size_t d = 0; d < D; ++d) {
       std::cout << *(target_data_ptr + b * D + d) << " ";
     }

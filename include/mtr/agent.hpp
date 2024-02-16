@@ -2,6 +2,7 @@
 #define MTR__AGENT_HPP_
 
 #include <array>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -13,8 +14,28 @@ enum AgentLabel { VEHICLE = 0, PEDESTRIAN = 1, CYCLIST = 2 };
 
 struct AgentState
 {
+  /**
+   * @brief Construct a new instance filling all elements by `0.0f`.
+   *
+   */
   AgentState() : data_({0.0f}) {}
 
+  /**
+   * @brief Construct a new instance with specified values.
+   *
+   * @param x X position.
+   * @param y Y position.
+   * @param z Z position.
+   * @param length Length of the bbox.
+   * @param width Width of the bbox.
+   * @param height Height of the bbox.
+   * @param yaw Heading yaw angle [rad].
+   * @param vx Velocity heading x direction in object's coordinates system.
+   * @param vy Velocity heading y direction in object's coordinates system.
+   * @param ax Acceleration heading x direction in object's coordinates system.
+   * @param ay Acceleration heading y direction in object's coordinates system.
+   * @param is_valid `1.0f` if valid, otherwise `0.0f`.
+   */
   AgentState(
     const float x, const float y, const float z, const float length, const float width,
     const float height, const float yaw, const float vx, const float vy, const float ax,
@@ -23,10 +44,20 @@ struct AgentState
   {
   }
 
-  static AgentState empty() noexcept { return AgentState(); }
-
   static const size_t Dim = AgentStateDim;
 
+  /**
+   * @brief Construct a new instance filling all elements by `0.0f`.
+   *
+   * @return AgentState
+   */
+  static AgentState empty() noexcept { return AgentState(); }
+
+  /**
+   * @brief Return the address pointer of data array.
+   *
+   * @return float*
+   */
   float * data_ptr() noexcept { return data_.data(); }
 
 private:
@@ -35,41 +66,145 @@ private:
 
 struct AgentHistory
 {
-  explicit AgentHistory(const std::string & object_id) : object_id_(object_id) {}
-
-  AgentHistory(const std::string & object_id, const size_t max_time_length) : object_id_(object_id)
+  /**
+   * @brief Construct a new Agent History filling the latest state by input state.
+   *
+   * @param state Object current state.
+   * @param object_id Object ID.
+   * @param current_time Current timestamp.
+   * @param max_time_length History length.
+   */
+  AgentHistory(
+    AgentState & state, const std::string & object_id, const float current_time,
+    const size_t max_time_length)
+  : data_((max_time_length - 1) * StateDim),
+    object_id_(object_id),
+    latest_time_(current_time),
+    max_time_length_(max_time_length)
   {
-    data_.reserve(max_time_length * StateDim);
+    const auto s_ptr = state.data_ptr();
+    for (size_t d = 0; d < StateDim; ++d) {
+      data_.push_back(*(s_ptr + d));
+    }
+  }
+
+  /**
+   * @brief Construct a new Agent History filling all elements by zero.
+   *
+   * @param object_id Object ID.
+   * @param max_time_length History time length.
+   */
+  AgentHistory(const std::string & object_id, const size_t max_time_length)
+  : data_(max_time_length * StateDim),
+    object_id_(object_id),
+    latest_time_(-std::numeric_limits<float>::max()),
+    max_time_length_(max_time_length)
+  {
   }
 
   static const size_t StateDim = AgentStateDim;
-  const std::string & object_id() const { return object_id_; }
-  size_t length() const { return data_.size() / StateDim; }
 
-  void push_back(const float current_time, AgentState & state) noexcept
+  /**
+   * @brief Returns ID of the object.
+   *
+   * @return const std::string&
+   */
+  const std::string & object_id() const { return object_id_; }
+
+  /**
+   * @brief Return the history length.
+   *
+   * @return size_t History length.
+   */
+  size_t length() const { return max_time_length_; }
+
+  /**
+   * @brief Return the last timestamp when non-empty state was pushed.
+   *
+   * @return float
+   */
+  float latest_time() const { return latest_time_; }
+
+  /**
+   * @brief Update history with input state and latest time.
+   *
+   * @param current_time
+   * @param state
+   */
+  void update(const float current_time, AgentState & state) noexcept
   {
+    // remove the state at the oldest timestamp
+    data_.erase(data_.begin(), data_.begin() + StateDim);
+
     const auto s = state.data_ptr();
     for (size_t d = 0; d < StateDim; ++d) {
       data_.push_back(*(s + d));
     }
     latest_time_ = current_time;
   }
-  float * data_ptr() noexcept { return data_.data(); }
-  float latest_time() const { return latest_time_; }
-  bool has_current_data(const float current_time) const { return latest_time_ == current_time; }
-  bool is_valid(const float current_time, const float threshold) const
+
+  /**
+   * @brief Update history with all-zeros state, but latest time is not updated.
+   *
+   */
+  void update_empty() noexcept
   {
-    return current_time - latest_time_ < threshold;
+    // remove the state at the oldest timestamp
+    data_.erase(data_.begin(), data_.begin() + StateDim);
+
+    const auto s = AgentState::empty().data_ptr();
+    for (size_t d = 0; d < StateDim; ++d) {
+      data_.push_back(*(s + d));
+    }
   }
+
+  /**
+   * @brief Return the address pointer of data array.
+   *
+   * @return float* The pointer of data array.
+   */
+  float * data_ptr() noexcept { return data_.data(); }
+
+  /**
+   * @brief Check whether the latest valid state is too old or not.
+   *
+   * @param current_time Current timestamp.
+   * @param threshold Time difference threshold value.
+   * @return true If the difference is greater than threshold.
+   * @return false Otherwise
+   */
+  bool is_ancient(const float current_time, const float threshold) const
+  {
+    /* TODO: Raise error if the current time is smaller than latest */
+    return current_time - latest_time_ >= threshold;
+  }
+
+  /**
+   * @brief Check whether the latest state data is valid.
+   *
+   * @return true If the end of element is 1.0f.
+   * @return false Otherwise.
+   */
+  bool is_valid_latest() const { return data_.at(StateDim * max_time_length_ - 1) == 1.0f; }
 
 private:
   std::vector<float> data_;
-  std::string object_id_;
+  const std::string object_id_;
   float latest_time_;
+  const size_t max_time_length_;
 };
 
 struct AgentData
 {
+  /**
+   * @brief Construct a new instance.
+   *
+   * @param histories An array of histories for each object.
+   * @param sdc_index An index of ego.
+   * @param target_index Indices of target agents.
+   * @param label_index An array of label indices for each object.
+   * @param timestamps An array of timestamps.
+   */
   AgentData(
     std::vector<AgentHistory> & histories, const int sdc_index,
     const std::vector<int> & target_index, const std::vector<int> & label_index,
@@ -112,8 +247,18 @@ struct AgentData
   std::vector<int> label_index;
   std::vector<float> timestamps;
 
+  /**
+   * @brief Return the address pointer of data array.
+   *
+   * @return float* The pointer of data array.
+   */
   float * data_ptr() noexcept { return data_.data(); }
 
+  /**
+   * @brief Return the address pointer of data array for target agents.
+   *
+   * @return float* The pointer of data array for target agents.
+   */
   float * target_data_ptr() noexcept { return target_data_.data(); }
 
 private:
