@@ -46,10 +46,7 @@ target_link_libraries(custom_plugin
     ${TRT_PLUGIN_LIBS}
     ${CUDA_LIBRARIES}
     ${CUBLAS_LIBRARIES}
-    ${CUDNN_LIBRARIES}
-    ${CUDA_npp_LIBRARY}
-    ${CUDA_nppc_LIBRARY}
-    ${CUDA_npps_LIBRARY})
+    ${CUDNN_LIBRARIES})
 target_include_directories(custom_plugin PUBLIC
   lib/include
 )
@@ -63,10 +60,7 @@ cuda_add_library(custom_kernel SHARED
 target_link_libraries(custom_kernel
   ${CUDA_LIBRARIES}
   ${CUBLAS_LIBRARIES}
-  ${CUDNN_LIBRARIES}
-  ${CUDA_npp_LIBRARY}
-  ${CUDA_nppc_LIBRARY}
-  ${CUDA_npps_LIBRARY})
+  ${CUDNN_LIBRARIES})
 target_include_directories(custom_kernel PUBLIC
   lib/include
 )
