@@ -1,42 +1,83 @@
-#ifndef PREPROCESS__POLYLINE_PREPROCESS_KERNEL_HPP_
-#define PREPROCESS__POLYLINE_PREPROCESS_KERNEL_HPP_
+#ifndef PREPROCESS__POLYLINE_PREPROCESS_KERNEL_CUH_
+#define PREPROCESS__POLYLINE_PREPROCESS_KERNEL_CUH_
 
-__device__ void transform_polyline(
-  const int B, const int K, const int P, const int D, const float * polylines,
-  const float * center_xyz, const float * center_yaw, float * output)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < K * P) {
-    const float x = polylines[idx * D];
-    const float y = polylines[idx * D + 1];
-    const float z = polylines[idx * D + 2];
-    const float dx = polylines[idx * D + 3];
-    const float dy = polylines[idx * D + 4];
-    const float dz = polylines[idx * D + 5];
-    const float type_id = polylines[idx * D + 6];
+/**
+ * @brief Transform to target agent coordinates system.
+ *
+ * @param K The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param PointDim The number of point state dimensions.
+ * @param in_polyline Source polylines, in shape [K*P*PointDim].
+ * @param B The number of target agents.
+ * @param AgentDim The number of agent state dimensions.
+ * @param target_state Source target state at the latest timestamp, in shape [B*AgentDim].
+ * @param polyline_mask The polyline mask, in shape [B*K*P].
+ * @param out_polyline Output polylines, in shape [B*K*P*(PointDim+2)].
+ *  in shape [B*K*3].
+ */
+__global__ void transformPolylineKernel(
+  const int K, const int P, const int PointDim, const float * in_polyline, const int B,
+  const int AgentDim, const float * target_state, const bool * polyline_mask, float * out_polyline);
 
-    for (int b = 0; b < B; ++b) {
-      const float cos_val = std::cos(center_yaw[b]);
-      const float sin_val = std::sin(center_yaw[b]);
+/**
+ * @brief Set the previous xy position at the end of element.
+ *
+ * @param B The number of target agents.
+ * @param K The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param D The number of point dimensions.
+ * @param mask The polyline mask, in shape [B*K*P].
+ * @param polyline The container of polylines, in shape [B*K*P*D]
+ * @return __global__
+ */
+__global__ void setPreviousPositionKernel(
+  const int B, const int K, const int P, const int D, const bool * mask, float * polyline);
 
-      // transform
-      const float trans_x = cos_val * x - sin_val * y - center_xyz[b * 3];
-      const float trans_y = sin_val * x + cos_val * y - center_xyz[b * 3 + 1];
-      const float trans_z = z;
-      const float trans_dx = cos_val * dx - sin_val * dy;
-      const float trans_dy = sin_val * dx + cos_val * dy;
-      const float trans_dz = dz;
+/**
+ * @brief In cases of the number of batch polylines (L) is greater than K,
+ *  extacts the topK elements.
+ *
+ * @param L The number of source polylines.
+ * @param K The number of polylines expected as the model input.
+ * @param P The number of points contained in each polyline.
+ * @param PointDim The number of point state dimensions.
+ * @param AgentDim The number of agent state dimensions.
+ * @param in_polyline Source polylines, in shape [L*P*PointDim].
+ * @param B The number of target agents.
+ * @param target_state Target agent state at the latest timestamp, in shape [B, AgentDim].
+ * @param topk_index A container to store topK indices, in shape [K].
+ * @param out_polyline Output polylines, in shape [B*K*P*(PointDim+2)].
+ * @param out_polyline_mask Output polyline masks, in shape [B*K*P].
+ * @param out_polyline_center Output magnitudes of each polyline with respect to target coords,
+ *  in shape [B*K*3].
+ * @param stream CUDA stream.
+ * @return cudaError_t
+ */
+cudaError_t polylinePreprocessWithTopkLauncher(
+  const int L, const int K, const int P, const int PointDim, const float * in_polyline, const int B,
+  const int AgentDim, const float * target_state, int * topk_index, float * out_polyline,
+  bool * out_polyline_mask, float * out_polyline_center, cudaStream_t stream);
 
-      const int trans_idx = (b * K * P + idx) * D;
-      output[trans_idx] = trans_x;
-      output[trans_idx + 1] = trans_y;
-      output[trans_idx + 2] = trans_z;
-      output[trans_idx + 3] = trans_dx;
-      output[trans_idx + 4] = trans_dy;
-      output[trans_idx + 5] = trans_dz;
-      output[trans_idx + 6] = type_id;
-    }
-  }
-}
+/**
+ * @brief Do preprocess for polyline if the number of batched polylines is K.
+ *
+ * @param K The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param PointDim The number of point state dimensions.
+ * @param in_polyline Source polylines, in shape [K*P*PointDim].
+ * @param B The number of target agents.
+ * @param AgentDim The number of agent state dimensions.
+ * @param target_state Target agent state at the latest timestamp, in shape [B, AgentDim].
+ * @param out_polyline Output polylines, in shape [B*K*P*(PointDim + 2)].
+ * @param out_polyline_mask Output polyline masks, in shape [B*K*P].
+ * @param out_polyline_center Output magnitudes of each polyline with respect to target coords,
+ *  in shape [B*K*3].
+ * @param stream CUDA stream.
+ * @return cudaError_t
+ */
+cudaError_t polylinePreprocessLauncher(
+  const int K, const int P, const int PointDim, const float * in_polyline, const int B,
+  const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
+  float * out_polyline_center, cudaStream_t stream);
 
-#endif  // PREPROCESS__POLYLINE_PREPROCESS_KERNEL_HPP_
+#endif  // PREPROCESS__POLYLINE_PREPROCESS_KERNEL_CUH_
