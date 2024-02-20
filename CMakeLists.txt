@@ -75,4 +75,6 @@ target_link_libraries(main PUBLIC trt_mtr)
 
 # unittest
 add_executable(test_agent test/agent_test.cpp)
+add_executable(test_polyline test/polyline_test.cpp)
 target_include_directories(test_agent PUBLIC include)
+target_include_directories(test_polyline PUBLIC include)

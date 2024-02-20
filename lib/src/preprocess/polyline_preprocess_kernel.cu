@@ -4,7 +4,7 @@
 
 __global__ void transformPolylineKernel(
   const int K, const int P, const int PointDim, const float * in_polyline, const int B,
-  const int AgentDim, const float * target_state, const bool * polyline_mask, float * out_polyline)
+  const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask)
 {
   int b = blockIdx.x * blockDim.x + threadIdx.x;
   int k = blockIdx.y * blockDim.y + threadIdx.y;
@@ -47,6 +47,13 @@ __global__ void transformPolylineKernel(
   out_polyline[out_idx + 4] = trans_dy;
   out_polyline[out_idx + 5] = trans_dz;
   out_polyline[out_idx + 6] = type_id;
+
+  const int out_mask_idx = b * K * P + k * P + p;
+  bool is_valid = false;
+  for (size_t i = 0; i < 6; ++i) {
+    is_valid += out_polyline[out_idx + i] != 0.0f;
+  }
+  out_polyline_mask[out_mask_idx] = is_valid;
 }
 
 __global__ void setPreviousPositionKernel(
@@ -109,5 +116,14 @@ cudaError_t polylinePreprocessLauncher(
   const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
   float * out_polyline_center, cudaStream_t stream)
 {
+  constexpr int threadsPerBlock = 256;
+  const dim3 numBlocks(B, K, P);
+
+  transformPolylineKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
+    K, P, PointDim, in_polyline, B, AgentDim, target_state, out_polyline, out_polyline_mask);
+
+  setPreviousPositionKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
+    B, K, P, PointDim, out_polyline_mask, out_polyline);
+
   return cudaGetLastError();
 }

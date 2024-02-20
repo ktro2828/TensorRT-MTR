@@ -76,6 +76,38 @@ mtr::AgentData load_agent_data()
   return mtr::AgentData(histories, sdc_index, target_index, label_index, timestamps);
 }
 
+mtr::PolylineData load_polyline_data(const int K)
+{
+  constexpr int N = 10;
+  constexpr int P = 5;
+  constexpr int D = 7;
+
+  float src_points[N][D] = {
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
+    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
+    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
+    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
+  };
+
+  std::vector<mtr::LanePoint> points;
+  points.reserve(N);
+  for (std::size_t n = 0; n < N; ++n) {
+    const std::size_t idx = n * D;
+    auto x = src_points[n][0];
+    auto y = src_points[n][1];
+    auto z = src_points[n][2];
+    auto dx = src_points[n][3];
+    auto dy = src_points[n][4];
+    auto dz = src_points[n][5];
+    auto label = src_points[n][6];
+    mtr::LanePoint point(x, y, z, dx, dy, dz, label);
+    points.emplace_back(point);
+  }
+
+  return mtr::PolylineData(points, K, P, 2.0f);
+}
+
 int main(int argc, char ** argv)
 {
   assert((USAGE, argc == 2));
@@ -84,8 +116,9 @@ int main(int argc, char ** argv)
   auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
 
   auto agent_data = load_agent_data();
+  auto polyline_data = load_polyline_data(model->config().max_num_polyline);
 
-  if (!model->doInference(agent_data)) {
+  if (!model->doInference(agent_data, polyline_data)) {
     std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
   } else {
     std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;

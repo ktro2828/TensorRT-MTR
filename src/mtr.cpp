@@ -2,6 +2,7 @@
 
 #include "postprocess/postprocess_kernel.cuh"
 #include "preprocess/agent_preprocess_kernel.cuh"
+#include "preprocess/polyline_preprocess_kernel.cuh"
 
 namespace mtr
 {
@@ -22,17 +23,17 @@ TrtMTR::TrtMTR(
   CHECK_CUDA_ERROR(cudaStreamCreate(&stream_));
 }
 
-bool TrtMTR::doInference(AgentData & agent_data)
+bool TrtMTR::doInference(AgentData & agent_data, PolylineData & polyline_data)
 {
-  initCudaPtr(agent_data);
+  initCudaPtr(agent_data, polyline_data);
 
-  if (!preProcess(agent_data)) {
+  if (!preProcess(agent_data, polyline_data)) {
     return false;
   }
   return true;
 }
 
-void TrtMTR::initCudaPtr(AgentData & agent_data)
+void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
 {
   // !!TODO!!
 
@@ -44,6 +45,9 @@ void TrtMTR::initCudaPtr(AgentData & agent_data)
     cuda::make_unique<float[]>(agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim);
   d_target_state_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.StateDim);
   d_intention_points_ = cuda::make_unique<float[]>(agent_data.AgentNum * 64 * 2);
+  d_polyline_ = cuda::make_unique<float[]>(
+    polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim);
+  d_topk_index_ = cuda::make_unique<int[]>(config_.max_num_polyline);
 
   // preprocessed input
   const size_t inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
@@ -52,6 +56,13 @@ void TrtMTR::initCudaPtr(AgentData & agent_data)
   d_in_trajectory_mask_ =
     cuda::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   d_in_last_pos_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
+  d_in_polyline_ = cuda::make_unique<float[]>(
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
+    (polyline_data.StateDim + 2));
+  d_in_polyline_mask_ = cuda::make_unique<bool[]>(
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum);
+  d_in_polyline_center_ =
+    cuda::make_unique<float[]>(agent_data.TargetNum * config_.max_num_polyline * 3);
 
   // outputs
   constexpr size_t outDim = 7;
@@ -65,13 +76,20 @@ void TrtMTR::initCudaPtr(AgentData & agent_data)
   h_debug_in_trajectory_mask_ =
     std::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   h_debug_in_last_pos_ = std::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
+  h_debug_in_polyline_ = std::make_unique<float[]>(
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
+    (polyline_data.StateDim + 2));
+  h_debug_in_polyline_mask_ = std::make_unique<bool[]>(
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum);
+  h_debug_in_polyline_center_ =
+    std::make_unique<float[]>(agent_data.TargetNum * config_.max_num_polyline * 3);
 
   h_debug_out_score_ = std::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
   h_debug_out_trajectory_ = std::make_unique<float[]>(
     agent_data.TargetNum * config_.num_mode * config_.num_future * outDim);
 }
 
-bool TrtMTR::preProcess(AgentData & agent_data)
+bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 {
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_target_index_.get(), agent_data.target_index.data(), sizeof(int) * agent_data.TargetNum,
@@ -88,7 +106,12 @@ bool TrtMTR::preProcess(AgentData & agent_data)
     cudaMemcpyHostToDevice, stream_));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_target_state_.get(), agent_data.target_data_ptr(),
-    sizeof(float) * agent_data.TargetNum * agent_data.StateDim, cudaMemcpyHostToDevice));
+    sizeof(float) * agent_data.TargetNum * agent_data.StateDim, cudaMemcpyHostToDevice, stream_));
+
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_polyline_.get(), polyline_data.data_ptr(),
+    sizeof(float) * polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim,
+    cudaMemcpyHostToDevice, stream_));
 
   // DEBUG
   event_debugger_.createEvent(stream_);
@@ -98,6 +121,24 @@ bool TrtMTR::preProcess(AgentData & agent_data)
     agent_data.ClassNum, agent_data.sdc_index, d_target_index_.get(), d_label_index_.get(),
     d_timestamps_.get(), d_trajectory_.get(), d_in_trajectory_.get(), d_in_trajectory_mask_.get(),
     d_in_last_pos_.get(), stream_));
+
+  // TODO
+  if (config_.max_num_polyline < polyline_data.PolylineNum) {
+    CHECK_CUDA_ERROR(polylinePreprocessWithTopkLauncher(
+      polyline_data.PolylineNum, config_.max_num_polyline, polyline_data.PointNum,
+      polyline_data.StateDim, d_polyline_.get(), agent_data.TargetNum, agent_data.StateDim,
+      d_target_state_.get(), d_topk_index_.get(), d_in_polyline_.get(), d_in_polyline_mask_.get(),
+      d_in_polyline_center_.get(), stream_));
+  } else {
+    assert(
+      ("The number of config.max_num_polyline and PolylineData.PolylineNum must be same",
+       config_.max_num_polyline == polyline_data.PolylineNum));
+    CHECK_CUDA_ERROR(polylinePreprocessLauncher(
+      polyline_data.PolylineNum, polyline_data.PointNum, polyline_data.StateDim, d_polyline_.get(),
+      agent_data.TargetNum, agent_data.StateDim, agent_data.target_data_ptr(), d_in_polyline_.get(),
+      d_in_polyline_mask_.get(), d_in_polyline_center_.get(), stream_));
+  }
+
   event_debugger_.printElapsedTime(stream_);
 
   debugPreprocess(agent_data);
