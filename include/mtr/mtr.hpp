@@ -89,7 +89,7 @@ private:
   std::unique_ptr<float[]> h_debug_out_score_{nullptr};
   std::unique_ptr<float[]> h_debug_out_trajectory_{nullptr};
 
-  void debugPreprocess(const AgentData & agent_data);
+  void debugPreprocess(const AgentData & agent_data, const PolylineData & polyline_data);
   void debugPostprocess(const AgentData & agent_data);
 };  // class TrtMTR
 }  // namespace mtr

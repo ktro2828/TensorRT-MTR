@@ -1,3 +1,4 @@
+#include "mtr/debugger.hpp"
 #include "mtr/mtr.hpp"
 
 #include <math.h>
@@ -5,7 +6,8 @@
 #include <cassert>
 #include <string>
 
-static const std::string USAGE = "[USAGE]: ./build/main <PATH_TO_ONNX> [or <PATH_TO_ENGINE>]";
+static const std::string USAGE =
+  "[USAGE]: ./build/main <PATH_TO_ONNX>(or <PATH_TO_ENGINE>) [<NUM_REPEAT=1>]";
 
 mtr::AgentData load_agent_data()
 {
@@ -110,17 +112,24 @@ mtr::PolylineData load_polyline_data(const int K)
 
 int main(int argc, char ** argv)
 {
-  assert((USAGE, argc == 2));
+  assert((USAGE, argc == 2 || argc == 3));
   auto model_path = std::string(argv[1]);
+  const int num_repeat = argc == 3 ? atoi(argv[2]) : 1;
+  assert(("The number of repeats must be integer > 0", num_repeat > 0));
 
+  mtr::Debugger debugger;
   auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
 
+  debugger.createEvent();
   auto agent_data = load_agent_data();
   auto polyline_data = load_polyline_data(model->config().max_num_polyline);
+  debugger.printElapsedTime("Data loading time: ");
 
-  if (!model->doInference(agent_data, polyline_data)) {
-    std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
-  } else {
-    std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
+  for (int i = 0; i < num_repeat; ++i) {
+    if (!model->doInference(agent_data, polyline_data)) {
+      std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
+    } else {
+      std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
+    }
   }
 }

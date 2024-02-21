@@ -141,7 +141,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   event_debugger_.printElapsedTime(stream_);
 
-  debugPreprocess(agent_data);
+  debugPreprocess(agent_data, polyline_data);
 
   return true;
 }
@@ -162,13 +162,13 @@ bool TrtMTR::postProcess(AgentData & agent_data)
   return true;
 }
 
-void TrtMTR::debugPreprocess(const AgentData & agent_data)
+void TrtMTR::debugPreprocess(const AgentData & agent_data, const PolylineData & polyline_data)
 {
   // DEBUG
-  const size_t inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
+  const size_t inAgentDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength + 3;
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_in_trajectory_.get(), d_in_trajectory_.get(),
-    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim,
+    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inAgentDim,
     cudaMemcpyDeviceToHost, stream_));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_in_trajectory_mask_.get(), d_in_trajectory_mask_.get(),
@@ -179,6 +179,20 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data)
     sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * 3, cudaMemcpyDeviceToHost,
     stream_));
 
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_.get(), d_in_polyline_.get(),
+    sizeof(float) * agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
+      (polyline_data.StateDim + 2),
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_mask_.get(), d_in_polyline_mask_.get(),
+    sizeof(bool) * agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_center_.get(), d_in_polyline_center_.get(),
+    sizeof(float) * agent_data.TargetNum * config_.max_num_polyline * 3, cudaMemcpyDeviceToHost,
+    stream_));
+
   std::cout << "=== Trajectory data ===\n";
   for (size_t b = 0; b < agent_data.TargetNum; ++b) {
     std::cout << "Batch " << b << ":\n";
@@ -186,11 +200,11 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data)
       std::cout << "  Agent " << n << ":\n";
       for (size_t t = 0; t < agent_data.TimeLength; ++t) {
         std::cout << "  Time " << t << ": ";
-        for (size_t d = 0; d < inDim; ++d) {
+        for (size_t d = 0; d < inAgentDim; ++d) {
           std::cout << h_debug_in_trajectory_.get()
                          [(b * agent_data.AgentNum * agent_data.TimeLength +
                            n * agent_data.TimeLength + t) *
-                            inDim +
+                            inAgentDim +
                           d]
                     << " ";
         }
@@ -220,6 +234,54 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data)
       std::cout << "  Agent " << n << ": ";
       for (size_t d = 0; d < 3; ++d) {
         std::cout << h_debug_in_last_pos_.get()[(b * agent_data.AgentNum + n) * 3 + d] << " ";
+      }
+      std::cout << "\n";
+    }
+  }
+
+  std::cout << "=== Polyline data ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+      std::cout << "  Polyline " << k << ":\n";
+      for (size_t p = 0; p < polyline_data.PointNum; ++p) {
+        std::cout << "    Point " << p << ": ";
+        for (size_t d = 0; d < polyline_data.StateDim + 2; ++d) {
+          std::cout << h_debug_in_polyline_.get()
+                         [(b * config_.max_num_polyline * polyline_data.PointNum +
+                           k * polyline_data.PointNum + p) *
+                            (polyline_data.StateDim + 2) +
+                          d]
+                    << " ";
+        }
+        std::cout << "\n";
+      }
+    }
+  }
+
+  std::cout << "=== Polyline mask ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+      std::cout << "  Polyline " << k << ": ";
+      for (size_t p = 0; p < polyline_data.PointNum; ++p) {
+        std::cout << h_debug_in_polyline_mask_
+                       .get()[(b * config_.max_num_polyline + k) * polyline_data.PointNum + p]
+                  << " ";
+      }
+      std::cout << "\n";
+    }
+  }
+
+  std::cout << "=== Polyline center ===\n";
+  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+      std::cout << "  Polyline " << k << ": ";
+      for (size_t d = 0; d < 3; ++d) {
+        std::cout << h_debug_in_polyline_center_
+                       .get()[(b * config_.max_num_polyline + k) * polyline_data.PointNum + d]
+                  << " ";
       }
       std::cout << "\n";
     }
