@@ -288,22 +288,23 @@ bool MTRBuilder::buildEngineFromOnnx(
     return false;
   }
 
+  // TODO: skip to save engine temporally
   // save engine
-#if TENSORRT_VERSION_MAJOR < 8
-  auto data = TrtUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
-#endif
-  std::ofstream file;
-  file.open(output_engine_filepath, std::ios::binary | std::ios::out);
-  if (!file.is_open()) {
-    return false;
-  }
-#if TENSORRT_VERSION_MAJOR < 8
-  file.write(reinterpret_cast<const char *>(data->data()), data->size());
-#else
-  file.write(reinterpret_cast<const char *>(plan->data()), plan->size());
-#endif
+  // #if TENSORRT_VERSION_MAJOR < 8
+  //   auto data = TrtUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
+  // #endif
+  //   std::ofstream file;
+  //   file.open(output_engine_filepath, std::ios::binary | std::ios::out);
+  //   if (!file.is_open()) {
+  //     return false;
+  //   }
+  // #if TENSORRT_VERSION_MAJOR < 8
+  //   file.write(reinterpret_cast<const char *>(data->data()), data->size());
+  // #else
+  //   file.write(reinterpret_cast<const char *>(plan->data()), plan->size());
+  // #endif
 
-  file.close();
+  // file.close();
 
   return true;
 }
