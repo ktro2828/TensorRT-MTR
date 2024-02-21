@@ -128,8 +128,8 @@ struct AgentHistory
   /**
    * @brief Update history with input state and latest time.
    *
-   * @param current_time
-   * @param state
+   * @param current_time The current timestamp.
+   * @param state The current agent state.
    */
   void update(const float current_time, AgentState & state) noexcept
   {
