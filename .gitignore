@@ -33,4 +33,4 @@
 
 # build
 build
-data
+*.onnx
