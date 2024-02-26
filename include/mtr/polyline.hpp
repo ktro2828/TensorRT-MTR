@@ -137,6 +137,7 @@ struct PolylineData
         addPoint(cur_point, point_cnt);
       }
     }
+    addEmptyPoints(point_cnt);
 
     if (PolylineNum < min_num_polyline) {
       addEmptyPolyline(min_num_polyline - PolylineNum);

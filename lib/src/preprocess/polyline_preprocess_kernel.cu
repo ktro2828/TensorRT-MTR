@@ -116,13 +116,17 @@ cudaError_t polylinePreprocessLauncher(
   const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
   float * out_polyline_center, cudaStream_t stream)
 {
+  // TODO(ktro2828): update the number of blocks and threads to guard `cudaErrorIllegalAccess: an
+  // illegal memory access was encounted.`
   constexpr int threadsPerBlock = 256;
-  const dim3 numBlocks(B, K, P);
+  const dim3 blocks(
+    (B - threadsPerBlock + 1) / threadsPerBlock, (K - threadsPerBlock + 1) / threadsPerBlock,
+    (P - threadsPerBlock + 1) / threadsPerBlock);
 
-  transformPolylineKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
+  transformPolylineKernel<<<blocks, threadsPerBlock, 0, stream>>>(
     K, P, PointDim, in_polyline, B, AgentDim, target_state, out_polyline, out_polyline_mask);
 
-  setPreviousPositionKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
+  setPreviousPositionKernel<<<blocks, threadsPerBlock, 0, stream>>>(
     B, K, P, PointDim, out_polyline_mask, out_polyline);
 
   return cudaGetLastError();
