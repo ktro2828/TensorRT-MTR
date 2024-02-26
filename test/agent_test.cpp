@@ -106,4 +106,13 @@ int main()
     }
     std::cout << "\n";
   }
+
+  std::cout << "=== Ego vehicle data (index=" << sdc_index << ") ===\n";
+  const float * ego_data_ptr = data.ego_data_ptr();
+  for (size_t t = 0; t < T; ++t) {
+    for (size_t d = 0; d < D; ++d) {
+      std::cout << *(ego_data_ptr + t * D + d) << " ";
+    }
+    std::cout << "\n";
+  }
 }

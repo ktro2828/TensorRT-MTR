@@ -234,6 +234,14 @@ struct AgentData
         target_data_.push_back(*(target_ptr + (TimeLength - 1) * StateDim + d));
       }
     }
+
+    ego_data_.reserve(TimeLength * StateDim);
+    const auto ego_data_ptr = histories.at(sdc_index).data_ptr();
+    for (size_t t = 0; t < TimeLength; ++t) {
+      for (size_t d = 0; d < StateDim; ++d) {
+        ego_data_.push_back(*(ego_data_ptr + t * StateDim + d));
+      }
+    }
   }
 
   const size_t TargetNum;
@@ -261,9 +269,17 @@ struct AgentData
    */
   float * target_data_ptr() noexcept { return target_data_.data(); }
 
+  /**
+   * @brief Return the address pointer of data array for ego vehicle.
+   *
+   * @return float* The pointer of data array for ego vehicle.
+   */
+  float * ego_data_ptr() noexcept { return ego_data_.data(); }
+
 private:
   std::vector<float> data_;
   std::vector<float> target_data_;
+  std::vector<float> ego_data_;
 };
 
 }  // namespace mtr
