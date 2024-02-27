@@ -27,10 +27,44 @@ __global__ void transformPolylineKernel(
  * @param D The number of point dimensions.
  * @param mask The polyline mask, in shape [B*K*P].
  * @param polyline The container of polylines, in shape [B*K*P*D]
- * @return __global__
  */
 __global__ void setPreviousPositionKernel(
   const int B, const int K, const int P, const int D, const bool * mask, float * polyline);
+
+/**
+ * @brief Extract TopK elements.
+ *
+ * @param K The number of K.
+ * @param L The number of source polylines.
+ * @param P The number of points contained in each polyline.
+ * @param B The number of target agents.
+ * @param offsetX X offset position.
+ * @param offsetY Y offset position.
+ * @param AgentDim The number of agent state dimensions.
+ * @param targetState Source state of target agents, in shape [B*AgentDim].
+ * @param PointDim The number of point state dimensions.
+ * @param inPolyline Source polylines, in shape [L*P*PointDim].
+ * @param outPolyline Output polylines, in shape [K*P*PointDim].
+ */
+__global__ void extractTopkKernel(
+  const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
+  const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
+  float * outPolyline);
+
+/**
+ * @brief Calculate the magnitudes of polylines.
+ *
+ * @param B The number of target agents.
+ * @param K The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param D The number of point dimensions.
+ * @param polyline Source polylines, in shape [B*K*P*(D + 2)].
+ * @param mask Source polyline masks, in shape [B*K*P].
+ * @param center Output magnitudes of polylines, in shape [B*K*3].
+ */
+__global__ void calculatePolylineCenterKernel(
+  const int B, const int K, const int P, const int PointDim, const float * polyline,
+  const bool * mask, float * center);
 
 /**
  * @brief In cases of the number of batch polylines (L) is greater than K,

@@ -28,8 +28,17 @@ bool TrtMTR::doInference(AgentData & agent_data, PolylineData & polyline_data)
   initCudaPtr(agent_data, polyline_data);
 
   if (!preProcess(agent_data, polyline_data)) {
+    std::cerr << "Fail to preprocess" << std::endl;
     return false;
   }
+
+  /* TODO: do inference */
+
+  if (!postProcess(agent_data)) {
+    std::cerr << "Fail to preprocess" << std::endl;
+    return false;
+  }
+
   return true;
 }
 
@@ -137,7 +146,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
        config_.max_num_polyline == polyline_data.PolylineNum));
     CHECK_CUDA_ERROR(polylinePreprocessLauncher(
       polyline_data.PolylineNum, polyline_data.PointNum, polyline_data.StateDim, d_polyline_.get(),
-      agent_data.TargetNum, agent_data.StateDim, agent_data.target_data_ptr(), d_in_polyline_.get(),
+      agent_data.TargetNum, agent_data.StateDim, d_target_state_.get(), d_in_polyline_.get(),
       d_in_polyline_mask_.get(), d_in_polyline_center_.get(), stream_));
   }
 
@@ -159,6 +168,8 @@ bool TrtMTR::postProcess(AgentData & agent_data)
     agent_data.TargetNum, config_.num_mode, config_.num_future, agent_data.StateDim,
     d_target_state_.get(), outDim, d_out_score_.get(), d_out_trajectory_.get(), stream_));
   event_debugger_.printElapsedTime(stream_);
+
+  debugPostprocess(agent_data);
 
   return true;
 }

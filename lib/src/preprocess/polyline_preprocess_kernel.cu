@@ -81,21 +81,26 @@ __global__ void setPreviousPositionKernel(
   }
 }
 
-__global__ void calculateTopkKernel(
-  const int K, const int L, const int B, const float * distances, int * topk_index)
+__global__ void extractTopkKernel(
+  const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
+  const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
+  float * outPolyline)
 {
-  /* TODO */
+  // mask = All(polyline != 0.0, dim=2)
+  // polylineCenter = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
+  // offset = rotateAlongZ((offset_x, offset_y), target_state[:, 6])
+  // targetOffsetPos = target_state[:, 0:2] + offset
+  // distances = (target_offset_pos - center)
+  // _, topkIdxs = distances.topk(k=K, descending=True)
+  // outPolyline = inPolyline[topkIdxs]
 }
 
 __global__ void calculatePolylineCenterKernel(
   const int B, const int K, const int P, const int PointDim, const float * polyline,
-  const float * polyline_mask, float * polyline_center)
+  const bool * mask, float * center)
 {
-  /* TODO */
-  // p = threadIdx.x
-  // extern __shared__ float shared_memory[];
-  // float * shared_center = shared_memory;                 // [B*K*3]
-  // float * shared_num_valid = &shared_center[B * K * 3];  // [B*K]
+  // sum = (polylines[:, :, :, 0:3] * mask[:, :, :, None]).sum(dim=2)
+  // center = sum / clampMIN(mask.sum(dim=2), min=1.0)
 }
 
 cudaError_t polylinePreprocessWithTopkLauncher(
@@ -119,9 +124,7 @@ cudaError_t polylinePreprocessLauncher(
   // TODO(ktro2828): update the number of blocks and threads to guard `cudaErrorIllegalAccess: an
   // illegal memory access was encounted.`
   constexpr int threadsPerBlock = 256;
-  const dim3 blocks(
-    (B - threadsPerBlock + 1) / threadsPerBlock, (K - threadsPerBlock + 1) / threadsPerBlock,
-    (P - threadsPerBlock + 1) / threadsPerBlock);
+  const dim3 blocks(B, (K - threadsPerBlock + 1) / threadsPerBlock, P);
 
   transformPolylineKernel<<<blocks, threadsPerBlock, 0, stream>>>(
     K, P, PointDim, in_polyline, B, AgentDim, target_state, out_polyline, out_polyline_mask);
