@@ -53,8 +53,14 @@ cmake --build build -j${nproc}
 ### Unittest
 
 ```shell
-# test agent pre-process
+# test agent data container defined in `include/mtr/agent.hpp`
 ./build/agent_test
+
+# test polyline data container defined in `include/mtr/polyline.hpp`
+./build/polyline_test
+
+# test intention point data container defined in `include/mtr/intention_point.hpp`
+./build/intention_point_test
 ```
 
 ## TODO
