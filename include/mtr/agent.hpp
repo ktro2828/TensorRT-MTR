@@ -3,6 +3,7 @@
 
 #include <array>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -228,7 +229,9 @@ struct AgentData
     }
 
     target_data_.reserve(TargetNum * StateDim);
+    target_label_index.reserve(TargetNum);
     for (const auto & idx : target_index) {
+      target_label_index.emplace_back(label_index.at(idx));
       const auto target_ptr = histories.at(idx).data_ptr();
       for (size_t d = 0; d < StateDim; ++d) {
         target_data_.push_back(*(target_ptr + (TimeLength - 1) * StateDim + d));
@@ -253,6 +256,7 @@ struct AgentData
   int sdc_index;
   std::vector<int> target_index;
   std::vector<int> label_index;
+  std::vector<int> target_label_index;
   std::vector<float> timestamps;
 
   /**
@@ -281,6 +285,31 @@ private:
   std::vector<float> target_data_;
   std::vector<float> ego_data_;
 };
+
+std::vector<std::string> getLabelNames(const std::vector<int> & label_index)
+{
+  std::vector<std::string> label_names;
+  label_names.reserve(label_index.size());
+  for (const auto & idx : label_index) {
+    switch (idx) {
+      case 0:
+        label_names.emplace_back("VEHICLE");
+        break;
+      case 1:
+        label_names.emplace_back("PEDESTRIAN");
+        break;
+      case 2:
+        label_names.emplace_back("CYCLIST");
+        break;
+      default:
+        std::ostringstream msg;
+        msg << "Error invalid label index: " << idx;
+        throw std::runtime_error(msg.str());
+        break;
+    }
+  }
+  return label_names;
+}
 
 }  // namespace mtr
 #endif  // MTR__AGENT_HPP_

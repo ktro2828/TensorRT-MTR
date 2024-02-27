@@ -8,6 +8,7 @@
 #include "mtr/agent.hpp"
 #include "mtr/builder.hpp"
 #include "mtr/cuda_helper.hpp"
+#include "mtr/intention_point.hpp"
 #include "mtr/polyline.hpp"
 
 #include <string>
@@ -19,17 +20,29 @@ struct MtrConfig
 {
   MtrConfig(
     const std::vector<std::string> & target_labels = {"VEHICLE", "PEDESTRIAN", "CYCLIST"},
-    const size_t num_mode = 6, const size_t num_future = 80, const size_t max_num_polyline = 768)
+    const size_t num_mode = 6, const size_t num_future = 80, const size_t num_predict_dim = 7,
+    const size_t max_num_polyline = 768,
+    const std::string & intention_point_filepath = "./data/waymo64.csv",
+    const size_t num_intention_point_cluster = 64)
   : target_labels(target_labels),
+    num_class(target_labels.size()),
     num_mode(num_mode),
     num_future(num_future),
-    max_num_polyline(max_num_polyline)
+    num_predict_dim(num_predict_dim),
+    max_num_polyline(max_num_polyline),
+    intention_point_filepath(intention_point_filepath),
+    num_intention_point_cluster(num_intention_point_cluster)
   {
   }
+
   std::vector<std::string> target_labels;
+  size_t num_class;
   size_t num_mode;
   size_t num_future;
+  size_t num_predict_dim;
   size_t max_num_polyline;
+  std::string intention_point_filepath;
+  size_t num_intention_point_cluster;
 };
 
 class TrtMTR
@@ -55,6 +68,8 @@ private:
 
   std::unique_ptr<MTRBuilder> builder_;
   cudaStream_t stream_{nullptr};
+
+  IntentionPoint intention_point_;
 
   // source data
   cuda::unique_ptr<int[]> d_target_index_{nullptr};

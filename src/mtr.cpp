@@ -10,7 +10,9 @@ TrtMTR::TrtMTR(
   const std::string & model_path, const std::string & precision, const MtrConfig & config,
   const BatchConfig & batch_config, const size_t max_workspace_size,
   const BuildConfig & build_config)
-: config_(config)
+: config_(config),
+  intention_point_(
+    IntentionPoint::fromCsv(config_.intention_point_filepath, config_.num_intention_point_cluster))
 {
   builder_ = std::make_unique<MTRBuilder>(
     model_path, precision, batch_config, max_workspace_size, build_config);
@@ -54,7 +56,7 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     cuda::make_unique<float[]>(agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim);
   d_target_state_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.StateDim);
   d_intention_points_ =
-    cuda::make_unique<float[]>(agent_data.AgentNum * 64 * 2);  // TODO: avoid magic number
+    cuda::make_unique<float[]>(agent_data.AgentNum * config_.num_intention_point_cluster * 2);
   d_polyline_ = cuda::make_unique<float[]>(
     polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim);
   d_topk_index_ = cuda::make_unique<int[]>(config_.max_num_polyline);
@@ -76,10 +78,9 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     cuda::make_unique<float[]>(agent_data.TargetNum * config_.max_num_polyline * 3);
 
   // outputs
-  constexpr size_t outDim = 7;  // TODO: define this in global
   d_out_score_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
   d_out_trajectory_ = cuda::make_unique<float[]>(
-    agent_data.TargetNum * config_.num_mode * config_.num_future * outDim);
+    agent_data.TargetNum * config_.num_mode * config_.num_future * config_.num_predict_dim);
 
   // debug
   h_debug_in_trajectory_ = std::make_unique<float[]>(
@@ -97,7 +98,7 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
 
   h_debug_out_score_ = std::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
   h_debug_out_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * config_.num_mode * config_.num_future * outDim);
+    agent_data.TargetNum * config_.num_mode * config_.num_future * config_.num_predict_dim);
 }
 
 bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
@@ -122,6 +123,13 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_polyline_.get(), polyline_data.data_ptr(),
     sizeof(float) * polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim,
+    cudaMemcpyHostToDevice, stream_));
+
+  const auto target_label_names = getLabelNames(agent_data.target_label_index);
+  const auto intention_points = intention_point_.get_points(target_label_names);
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    d_intention_points_.get(), intention_points.data(),
+    sizeof(float) * agent_data.AgentNum * config_.num_intention_point_cluster * 2,
     cudaMemcpyHostToDevice, stream_));
 
   // DEBUG
@@ -159,14 +167,13 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
 bool TrtMTR::postProcess(AgentData & agent_data)
 {
-  constexpr int outDim = 7;  // TODO: define this in global
-
   // DEBUG
   event_debugger_.createEvent(stream_);
   // Postprocess
   CHECK_CUDA_ERROR(postprocessLauncher(
     agent_data.TargetNum, config_.num_mode, config_.num_future, agent_data.StateDim,
-    d_target_state_.get(), outDim, d_out_score_.get(), d_out_trajectory_.get(), stream_));
+    d_target_state_.get(), config_.num_predict_dim, d_out_score_.get(), d_out_trajectory_.get(),
+    stream_));
   event_debugger_.printElapsedTime(stream_);
 
   debugPostprocess(agent_data);
@@ -304,13 +311,13 @@ void TrtMTR::debugPreprocess(const AgentData & agent_data, const PolylineData & 
 void TrtMTR::debugPostprocess(const AgentData & agent_data)
 {
   // DEBUG
-  constexpr size_t outDim = 7;  // TODO: define this in global
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_out_score_.get(), d_out_score_.get(),
     sizeof(float) * agent_data.TargetNum * config_.num_mode, cudaMemcpyDeviceToHost, stream_));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_debug_out_trajectory_.get(), d_out_trajectory_.get(),
-    sizeof(float) * agent_data.TargetNum * config_.num_mode * config_.num_future * outDim,
+    sizeof(float) * agent_data.TargetNum * config_.num_mode * config_.num_future *
+      config_.num_predict_dim,
     cudaMemcpyDeviceToHost, stream_));
 
   std::cout << "=== Out score === \n";
@@ -329,10 +336,10 @@ void TrtMTR::debugPostprocess(const AgentData & agent_data)
       std::cout << "  Mode " << m << ":\n";
       for (size_t t = 0; t < config_.num_future; ++t) {
         std::cout << "  Time " << t << ": ";
-        for (size_t d = 0; d < outDim; ++d) {
+        for (size_t d = 0; d < config_.num_predict_dim; ++d) {
           std::cout << h_debug_out_trajectory_.get()
                          [(b * config_.num_mode * config_.num_future + m * config_.num_future + t) *
-                            outDim +
+                            config_.num_predict_dim +
                           d]
                     << " ";
         }

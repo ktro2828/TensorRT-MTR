@@ -85,7 +85,7 @@ public:
    * @param label_names Array of label names for all agents, in shape [N].
    * @return std::vector<float> Array of all points in shape, [N * num_cluster * 2].
    */
-  std::vector<float> get_points(std::vector<std::string> & label_names)
+  std::vector<float> get_points(const std::vector<std::string> & label_names)
   {
     std::vector<float> points;
     points.reserve(label_names.size() * num_cluster_ * StateDim);
