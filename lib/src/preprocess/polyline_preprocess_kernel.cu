@@ -86,6 +86,7 @@ __global__ void extractTopkKernel(
   const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
   float * outPolyline)
 {
+  // --- pseudo code ---
   // mask = All(polyline != 0.0, dim=2)
   // polylineCenter = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
   // offset = rotateAlongZ((offset_x, offset_y), target_state[:, 6])
@@ -93,14 +94,29 @@ __global__ void extractTopkKernel(
   // distances = (target_offset_pos - center)
   // _, topkIdxs = distances.topk(k=K, descending=True)
   // outPolyline = inPolyline[topkIdxs]
+  // -------------------
+
+  // int targetIdx = blockIdx.x;
+
+  // const float targetX = targetState[targetIdx];
+  // const float targetY = targetState[targetIdx + 1];
+  // const float targetYaw = targetState[targetIdx + 6];
+  // const float targetCos = cos(targetYaw);
+  // const float targetSin = sin(targetYaw);
+
+  // const float transTargetX = targetCos * offsetX + targetSin * offsetY + targetX;
+  // const float transTargetY = -targetSin * offsetX + targetCos * offsetY + targetY;
 }
 
 __global__ void calculatePolylineCenterKernel(
   const int B, const int K, const int P, const int PointDim, const float * polyline,
   const bool * mask, float * center)
 {
+  // --- pseudo code ---
   // sum = (polylines[:, :, :, 0:3] * mask[:, :, :, None]).sum(dim=2)
   // center = sum / clampMIN(mask.sum(dim=2), min=1.0)
+  // -------------------
+
   int b = blockIdx.x * blockDim.x + threadIdx.x;
   int k = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -134,8 +150,9 @@ __global__ void calculatePolylineCenterKernel(
 
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int L, const int K, const int P, const int PointDim, const float * in_polyline, const int B,
-  const int AgentDim, const float * target_state, int * topk_index, float * out_polyline,
-  bool * out_polyline_mask, float * out_polyline_center, cudaStream_t stream)
+  const int AgentDim, const float * target_state, const float offset_x, const float offset_y,
+  int * topk_index, float * out_polyline, bool * out_polyline_mask, float * out_polyline_center,
+  cudaStream_t stream)
 {
   if (L < K) {
     std::cerr << "L must be greater than K, but got L: " << L << ", K: " << K << std::endl;

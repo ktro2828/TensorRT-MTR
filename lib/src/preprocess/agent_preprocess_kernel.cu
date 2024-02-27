@@ -110,8 +110,7 @@ cudaError_t agentPreprocessLauncher(
     return cudaError::cudaErrorInvalidValue;
   }
 
-  // TODO(ktro2828): update the number of blocks and threads to guard `cudaErrorIllegalAccess: an
-  // illegal memory access was encounted.`
+  // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
   constexpr int threadsPerBlock = 256;
   dim3 blocks(B, N, T);
   agentPreprocessKernel<<<blocks, threadsPerBlock, 0, stream>>>(

@@ -11,6 +11,7 @@
 #include "mtr/intention_point.hpp"
 #include "mtr/polyline.hpp"
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -21,7 +22,7 @@ struct MtrConfig
   MtrConfig(
     const std::vector<std::string> & target_labels = {"VEHICLE", "PEDESTRIAN", "CYCLIST"},
     const size_t num_mode = 6, const size_t num_future = 80, const size_t num_predict_dim = 7,
-    const size_t max_num_polyline = 768,
+    const size_t max_num_polyline = 768, const std::array<float, 2> offset_xy = {30.0f, 0.0f},
     const std::string & intention_point_filepath = "./data/waymo64.csv",
     const size_t num_intention_point_cluster = 64)
   : target_labels(target_labels),
@@ -30,6 +31,7 @@ struct MtrConfig
     num_future(num_future),
     num_predict_dim(num_predict_dim),
     max_num_polyline(max_num_polyline),
+    offset_xy(offset_xy),
     intention_point_filepath(intention_point_filepath),
     num_intention_point_cluster(num_intention_point_cluster)
   {
@@ -41,6 +43,7 @@ struct MtrConfig
   size_t num_future;
   size_t num_predict_dim;
   size_t max_num_polyline;
+  std::array<float, 2> offset_xy;
   std::string intention_point_filepath;
   size_t num_intention_point_cluster;
 };

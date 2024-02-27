@@ -78,6 +78,8 @@ __global__ void calculatePolylineCenterKernel(
  * @param in_polyline Source polylines, in shape [L*P*PointDim].
  * @param B The number of target agents.
  * @param target_state Target agent state at the latest timestamp, in shape [B, AgentDim].
+ * @param offset_x The x offset.
+ * @param offset_y The y offset.
  * @param topk_index A container to store topK indices, in shape [K].
  * @param out_polyline Output polylines, in shape [B*K*P*(PointDim+2)].
  * @param out_polyline_mask Output polyline masks, in shape [B*K*P].
@@ -88,8 +90,9 @@ __global__ void calculatePolylineCenterKernel(
  */
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int L, const int K, const int P, const int PointDim, const float * in_polyline, const int B,
-  const int AgentDim, const float * target_state, int * topk_index, float * out_polyline,
-  bool * out_polyline_mask, float * out_polyline_center, cudaStream_t stream);
+  const int AgentDim, const float * target_state, const float offsetX, const float offsetY,
+  int * topk_index, float * out_polyline, bool * out_polyline_mask, float * out_polyline_center,
+  cudaStream_t stream);
 
 /**
  * @brief Do preprocess for polyline if the number of batched polylines is K.

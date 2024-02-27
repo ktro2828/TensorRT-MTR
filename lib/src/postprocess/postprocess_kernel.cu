@@ -31,6 +31,7 @@ cudaError_t postprocessLauncher(
   const int B, const int M, const int T, const int inDim, const float * target_state,
   const int outDim, float * pred_score, float * pred_trajectory, cudaStream_t stream)
 {
+  // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
   constexpr int threadsPerBlock = 256;
   dim3 blocks(B, M, T);
 
