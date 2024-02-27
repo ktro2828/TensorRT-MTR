@@ -101,6 +101,35 @@ __global__ void calculatePolylineCenterKernel(
 {
   // sum = (polylines[:, :, :, 0:3] * mask[:, :, :, None]).sum(dim=2)
   // center = sum / clampMIN(mask.sum(dim=2), min=1.0)
+  int b = blockIdx.x * blockDim.x + threadIdx.x;
+  int k = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (b >= B || k >= K) {
+    return;
+  }
+
+  // initialize with 0.0
+  int center_idx = (b * K + k) * 3;
+  for (int d = 0; d < 3; ++d) {
+    center[center_idx + d] = 0.0f;
+  }
+
+  float sum_xyz[3] = {0.0f, 0.0f, 0.0f};
+  int count = 0;
+  for (int p = 0; p < P; ++p) {
+    int src_idx = b * K * P + k * P + p;
+    if (mask[src_idx]) {
+      for (int d = 0; d < 3; ++d) {
+        sum_xyz[d] += polyline[src_idx * PointDim + d];
+      }
+      ++count;
+    }
+  }
+  count = max(count, 1);
+
+  for (int d = 0; d < 3; ++d) {
+    center[center_idx + d] = sum_xyz[d] / static_cast<float>(count);
+  }
 }
 
 cudaError_t polylinePreprocessWithTopkLauncher(
@@ -121,16 +150,19 @@ cudaError_t polylinePreprocessLauncher(
   const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
   float * out_polyline_center, cudaStream_t stream)
 {
-  // TODO(ktro2828): update the number of blocks and threads to guard `cudaErrorIllegalAccess: an
-  // illegal memory access was encounted.`
+  // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
   constexpr int threadsPerBlock = 256;
-  const dim3 blocks(B, (K - threadsPerBlock + 1) / threadsPerBlock, P);
+  const dim3 block3d(B, K / threadsPerBlock, P);
 
-  transformPolylineKernel<<<blocks, threadsPerBlock, 0, stream>>>(
+  transformPolylineKernel<<<block3d, threadsPerBlock, 0, stream>>>(
     K, P, PointDim, in_polyline, B, AgentDim, target_state, out_polyline, out_polyline_mask);
 
-  setPreviousPositionKernel<<<blocks, threadsPerBlock, 0, stream>>>(
+  setPreviousPositionKernel<<<block3d, threadsPerBlock, 0, stream>>>(
     B, K, P, PointDim, out_polyline_mask, out_polyline);
+
+  const dim3 block2d(B, K / threadsPerBlock);
+  calculatePolylineCenterKernel<<<block2d, threadsPerBlock, 0, stream>>>(
+    B, K, P, PointDim, out_polyline, out_polyline_mask, out_polyline_center);
 
   return cudaGetLastError();
 }
