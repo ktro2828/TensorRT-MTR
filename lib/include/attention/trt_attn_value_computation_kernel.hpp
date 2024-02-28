@@ -1,32 +1,34 @@
-#ifndef TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP
-#define TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP
+#ifndef ATTENTION__TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP_
+#define ATTENTION__TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP_
 
 #include <cuda_runtime.h>
 
 /**
  * @brief The launcher to invoke attention value computation kernel.
  *
- * @tparam T
- * @param b
- * @param total_query_num
- * @param local_size
- * @param total_value_num
- * @param nhead
- * @param hdim
- * @param query_batch_cnt
- * @param key_batch_cnt
- * @param index_pair_batch
- * @param index_pair
- * @param attn_weight
- * @param value_features
- * @param output
+ * @tparam T Type of `attnWeight` and `valueFeature`.
+ * @param B The size of batch.
+ * @param Q The size of query.
+ * @param L The size of local.
+ * @param K The size of key.
+ * @param numHead The number of heads.
+ * @param headDim The number of head dimensions.
+ * @param queryBatchCnt The number of queries for each batch, in shape [B].
+ * @param keyBatchCnt The number of keys for each batch, in shape [B].
+ * @param indexPairBatch The indices of batch for corresponding query, in shape [Q].
+ * @param indexPair The indices of key for corresponding query, in shape [Q*L].
+ * @param attnWeight Source attention weights, in shape [Q*L*numHead].
+ * @param valueFeature Source value features, in shape [K*numHead*headDim].
+ * @param output Output container, in shape [Q*numHead*headDim].
+ * @param stream CUDA stream.
+ *
+ * @return cudaError_t CUDA error type.
  */
 template <typename T>
 cudaError_t AttentionValueComputationLauncher(
-  const int32_t b, const int32_t total_query_num, const int32_t local_size,
-  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
-  const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
-  const int * index_pair, const T * attn_weight, const T * value_features, T * output,
-  cudaStream_t stream);
+  const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
+  const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
+  const int * indexPairBatch, const int * indexPair, const T * attnWeight, const T * valueFeature,
+  T * output, cudaStream_t stream);
 
-#endif  // TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP
+#endif  // ATTENTION__TRT_ATTN_VALUE_COMPUTATION_KERNEL_HPP_

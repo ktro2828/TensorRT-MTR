@@ -72,35 +72,33 @@ int AttentionValueComputation::enqueue(
   cudaStream_t stream) TRT_NOEXCEPT
 {
   // parse query_batch_cnt description
-  const int32_t batch = inDesc[0].dims.d[0];
+  const int32_t B = inDesc[0].dims.d[0];
 
   // parse index_pair description
-  const int32_t total_query_num = inDesc[3].dims.d[0];
-  const int32_t local_size = inDesc[3].dims.d[1];
+  const int32_t Q = inDesc[3].dims.d[0];
+  const int32_t L = inDesc[3].dims.d[1];
 
   // parse value_features description
-  const int32_t total_value_num = inDesc[5].dims.d[0];
-  const int32_t nhead = inDesc[5].dims.d[1];
-  const int32_t hdim = inDesc[5].dims.d[2];
+  const int32_t K = inDesc[5].dims.d[0];
+  const int32_t numHead = inDesc[5].dims.d[1];
+  const int32_t headDim = inDesc[5].dims.d[2];
 
-  const void * query_batch_cnt = inputs[0];
-  const void * key_batch_cnt = inputs[1];
-  const void * index_pair_batch = inputs[2];
-  const void * index_pair = inputs[3];
-  const void * attn_weight = inputs[4];
-  const void * value_features = inputs[5];
+  const void * queryBatchCnt = inputs[0];
+  const void * keyBatchCnt = inputs[1];
+  const void * indexPairBatch = inputs[2];
+  const void * indexPair = inputs[3];
+  const void * attnWeight = inputs[4];
+  const void * valueFeature = inputs[5];
 
   void * output = outputs[0];
 
   switch (outDesc[0].type) {
     case nvinfer1::DataType::kFLOAT:
       AttentionValueComputationLauncher<float>(
-        batch, total_query_num, local_size, total_value_num, nhead, hdim,
-        reinterpret_cast<const int *>(query_batch_cnt),
-        reinterpret_cast<const int *>(key_batch_cnt),
-        reinterpret_cast<const int *>(index_pair_batch), reinterpret_cast<const int *>(index_pair),
-        reinterpret_cast<const float *>(attn_weight),
-        reinterpret_cast<const float *>(value_features), reinterpret_cast<float *>(output), stream);
+        B, Q, L, K, numHead, headDim, reinterpret_cast<const int *>(queryBatchCnt),
+        reinterpret_cast<const int *>(keyBatchCnt), reinterpret_cast<const int *>(indexPairBatch),
+        reinterpret_cast<const int *>(indexPair), reinterpret_cast<const float *>(attnWeight),
+        reinterpret_cast<const float *>(valueFeature), reinterpret_cast<float *>(output), stream);
       break;
 
     default:

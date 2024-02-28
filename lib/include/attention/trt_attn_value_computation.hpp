@@ -1,5 +1,5 @@
-#ifndef TRT_ATTN_VALUE_COMPUTATION_HPP
-#define TRT_ATTN_VALUE_COMPUTATION_HPP
+#ifndef ATTENTION__TRT_ATTN_VALUE_COMPUTATION_HPP_
+#define ATTENTION__TRT_ATTN_VALUE_COMPUTATION_HPP_
 
 #include "common/trt_plugin_base.hpp"
 
@@ -8,13 +8,13 @@ namespace trt_mtr
 /**
  * @brief Attention value computation plugin.
  *
- * @param query_batch_cnt <int; [B]>
- * @param key_batch_cnt <int; [B]>
- * @param index_pair_batch <int; [Q]>
- * @param index_pair <int; [Q, L]>
- * @param attn_weight <float; [Q, L, H]>
- * @param value_features <float; [V, H, D]>
- * @return outputs <float; [Q, H, D]>
+ * @param queryBatchCnt <int; [B]>
+ * @param keyBatchCnt <int; [B]>
+ * @param indexPairBatch <int; [Q]>
+ * @param indexPair <int; [Q, L]>
+ * @param attnWeight <float; [Q, L, numHead]>
+ * @param valueFeature <float; [K, numHead, headDim]>
+ * @return outputs <float; [Q, numHead, headDim]>
  */
 class AttentionValueComputation : public TRTPluginBase
 {
@@ -82,4 +82,4 @@ public:
 };  // class AttentionValueComputationCreator
 REGISTER_TENSORRT_PLUGIN(AttentionValueComputationCreator);
 }  // namespace trt_mtr
-#endif  // TRT_ATTN_VALUE_COMPUTATION_HPP
+#endif  // ATTENTION__TRT_ATTN_VALUE_COMPUTATION_HPP_

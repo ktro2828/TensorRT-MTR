@@ -1,5 +1,5 @@
-#ifndef KNN_BATCH_MLOGK_HPP
-#define KNN_BATCH_MLOGK_HPP
+#ifndef KNN__TRT_KNN_BATCH_MLOGK_HPP_
+#define KNN__TRT_KNN_BATCH_MLOGK_HPP_
 
 #include "common/trt_plugin_base.hpp"
 
@@ -84,4 +84,4 @@ public:
 };  // class KnnBatchMlogKCreator
 REGISTER_TENSORRT_PLUGIN(KnnBatchMlogKCreator);
 }  // namespace trt_mtr
-#endif  // KNN_BATCH_MLOGK_HPP
+#endif  // KNN__TRT_KNN_BATCH_MLOGK_HPP_

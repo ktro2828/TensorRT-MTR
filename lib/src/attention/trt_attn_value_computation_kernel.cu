@@ -1,108 +1,128 @@
 #include "attention/trt_attn_value_computation_kernel.hpp"
 
+#include <iostream>
+
+/**
+ * @brief
+ *
+ * @tparam T Type of `attnWeight` and `valueFeature`.
+ * @tparam d The size of shared memory, which should be equal to `L`.
+ * @param B The size of batch.
+ * @param Q The size of query.
+ * @param L The size of local.
+ * @param K The size of key.
+ * @param numHead The number of heads.
+ * @param headDim The number of head dimensions.
+ * @param queryBatchCnt The number of queries for each batch, in shape [B].
+ * @param keyBatchCnt The number of keys for each batch, in shape [B].
+ * @param indexPairBatch The indices of batch for corresponding query, in shape [Q].
+ * @param indexPair The indices of key for corresponding query, in shape [Q*L].
+ * @param attnWeight Source attention weights, in shape [Q*L*numHead].
+ * @param valueFeature Source value features, in shape [K*numHead*headDim].
+ * @param output Output container, in shape [Q*numHead*headDim].
+ */
 template <typename T, unsigned int d>
-__global__ void attention_value_computation_kernel(
-  const int32_t b, const int32_t total_query_num, const int32_t local_size,
-  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
-  const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
-  const int * index_pair, const T * attn_weight, const T * value_features, T * output)
+__global__ void attentionValueComputationKernel(
+  const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
+  const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
+  const int * indexPairBatch, const int * indexPair, const T * attnWeight, const T * valueFeature,
+  T * output)
 {
   const int query_idx = blockIdx.x;
   const int head_idx = blockIdx.y;
   const int hdim_idx = threadIdx.x;
 
-  if (query_idx >= total_query_num || head_idx >= nhead || hdim_idx >= hdim) {
+  if (query_idx >= Q || head_idx >= numHead || hdim_idx >= headDim) {
     return;
   }
 
   // get key_start_idx
-  const int batch_idx = index_pair_batch[query_idx];
+  const int batch_idx = indexPairBatch[query_idx];
   int key_start_idx = 0;
   for (int i = 0; i < batch_idx; ++i) {
-    key_start_idx += key_batch_cnt[i];
+    key_start_idx += keyBatchCnt[i];
   }
   // get shared variables
-  __shared__ T shared_attn_weight[d];
-  __shared__ int shared_value_indices[d];
+  __shared__ T sharedAttnWeight[d];
+  __shared__ int sharedValueIdx[d];
   int cur_key_idx = 0;
-  for (int i = 0; i < local_size; i += blockDim.x) {
-    shared_attn_weight[i] = attn_weight[query_idx * local_size * nhead + i * nhead + head_idx];
+  for (int i = 0; i < L; i += blockDim.x) {
+    sharedAttnWeight[i] = attnWeight[query_idx * L * numHead + i * numHead + head_idx];
 
-    cur_key_idx = index_pair[query_idx * local_size + i];
+    cur_key_idx = indexPair[query_idx * L + i];
     if (cur_key_idx < 0) {
-      shared_value_indices[i] = -1;
+      sharedValueIdx[i] = -1;
       continue;
     }
     cur_key_idx += key_start_idx;
-    shared_value_indices[i] = cur_key_idx;
+    sharedValueIdx[i] = cur_key_idx;
   }
   __syncthreads();
 
-  output += query_idx * nhead * hdim + head_idx * hdim + hdim_idx;
+  output += query_idx * numHead * headDim + head_idx * headDim + hdim_idx;
 
   T attn_result = 0;
-  for (int i = 0; i < local_size; ++i) {
-    if (shared_value_indices[i] == -1) {
+  for (int i = 0; i < L; ++i) {
+    if (sharedValueIdx[i] == -1) {
       continue;
     }
     // TODO: fix bug
     // attn_result +=
-    //   shared_attn_weight[i] *
-    //   value_features[shared_value_indices[i] * nhead * hdim + head_idx * hdim + hdim_idx];
+    //   sharedAttnWeight[i] *
+    //   valueFeature[sharedValueIdx[i] * numHead * headDim + head_idx * headDim + hdim_idx];
   }
   output[0] = attn_result;
 }
 
 template <typename T>
 cudaError_t AttentionValueComputationLauncher(
-  const int32_t b, const int32_t total_query_num, const int32_t local_size,
-  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
-  const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
-  const int * index_pair, const T * attn_weight, const T * value_features, T * output,
-  cudaStream_t stream)
+  const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
+  const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
+  const int * indexPairBatch, const int * indexPair, const T * attnWeight, const T * valueFeature,
+  T * output, cudaStream_t stream)
 {
-  if (local_size > 512) {
+  if (L > 512) {
     return cudaError::cudaErrorInvalidValue;
   }
 
-  dim3 blocks(total_query_num, nhead);
-  dim3 threads(hdim);
+  dim3 blocks(Q, numHead);
+  dim3 threads(headDim);
 
-  switch (local_size) {
+  switch (L) {
     case 16:
-      attention_value_computation_kernel<T, 16><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 16><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     case 32:
-      attention_value_computation_kernel<T, 32><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 32><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     case 64:
-      attention_value_computation_kernel<T, 64><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 64><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     case 128:
-      attention_value_computation_kernel<T, 128><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 128><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     case 320:
-      attention_value_computation_kernel<T, 320><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 320><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     case 384:
-      attention_value_computation_kernel<T, 384><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 384><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
     default:
-      attention_value_computation_kernel<T, 512><<<blocks, threads, 0, stream>>>(
-        b, total_query_num, local_size, total_value_num, nhead, hdim, query_batch_cnt,
-        key_batch_cnt, index_pair_batch, index_pair, attn_weight, value_features, output);
+      attentionValueComputationKernel<T, 512><<<blocks, threads, 0, stream>>>(
+        B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
+        attnWeight, valueFeature, output);
       break;
   }
 
@@ -110,8 +130,7 @@ cudaError_t AttentionValueComputationLauncher(
 }
 
 template cudaError_t AttentionValueComputationLauncher<float>(
-  const int32_t b, const int32_t total_query_num, const int32_t local_size,
-  const int32_t total_value_num, const int32_t nhead, const int32_t hdim,
-  const int * query_batch_cnt, const int * key_batch_cnt, const int * index_pair_batch,
-  const int * index_pair, const float * attn_weight, const float * value_features, float * output,
-  cudaStream_t stream);
+  const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
+  const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
+  const int * indexPairBatch, const int * indexPair, const float * attnWeight,
+  const float * valueFeature, float * output, cudaStream_t stream);
