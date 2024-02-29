@@ -44,12 +44,12 @@ __global__ void attentionValueComputationKernel(
   // get shared variables
   __shared__ float sharedAttnWeight[d];
   __shared__ int sharedValueIdx[d];
-  int cur_key_idx = 0;
+  int cur_key_idx;
   for (int i = 0; i < L; i += blockDim.x) {
     sharedAttnWeight[i] = attnWeight[query_idx * L * numHead + i * numHead + head_idx];
 
     cur_key_idx = indexPair[query_idx * L + i];
-    if (cur_key_idx < 0) {
+    if (cur_key_idx == -1) {
       sharedValueIdx[i] = -1;
       continue;
     }

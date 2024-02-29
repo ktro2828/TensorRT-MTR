@@ -1,7 +1,5 @@
 #include "attention/trt_attn_weight_computation_kernel.hpp"
 
-#include <stdio.h>
-
 /**
  * @brief Attention weight computation kernel.
  *
@@ -63,8 +61,7 @@ __global__ void attentionWeightComputationKernel(
 
   float attn_weight = 0.0f;
   for (int i = 0; i < headDim; ++i) {
-    // TODO: fix bug (an illegal memory access was encountered)
-    // attn_weight += keyFeature[i] * sharedQueryFeature[i];
+    attn_weight += keyFeature[i] * sharedQueryFeature[i];
   }
   output[0] = attn_weight;
 }
