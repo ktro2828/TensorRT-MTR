@@ -56,6 +56,17 @@ void AttentionValueComputation::configurePlugin(
   const nvinfer1::DynamicPluginTensorDesc * outDesc, int nbOutputs) TRT_NOEXCEPT
 {
   // Validate input arguments
+  PLUGIN_ASSERT(nbInputs == 6);
+  for (int pos = 0; pos < 6; ++pos) {
+    PLUGIN_ASSERT(
+      inDesc[pos].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+      inDesc[pos].desc.type == (pos < 4 ? nvinfer1::DataType::kINT32 : nvinfer1::DataType::kFLOAT));
+  }
+
+  PLUGIN_ASSERT(nbOutputs == 1);
+  PLUGIN_ASSERT(
+    outDesc[0].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+    outDesc[0].desc.type == nvinfer1::DataType::kFLOAT);
 }
 
 size_t AttentionValueComputation::getWorkspaceSize(

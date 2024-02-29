@@ -16,7 +16,7 @@ enum pluginStatus_t {
   STATUS_NOT_INITIALIZED = 4
 };  // enum pluginStatus_t
 
-#define ASSERT(assertion)                                                    \
+#define PLUGIN_ASSERT(assertion)                                             \
   {                                                                          \
     if (!(assertion)) {                                                      \
       std::cerr << "#assertion" << __FILE__ << "," << __LINE__ << std::endl; \

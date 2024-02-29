@@ -58,6 +58,17 @@ void KnnBatch::configurePlugin(
   const nvinfer1::DynamicPluginTensorDesc * outDesc, int nbOutputs) TRT_NOEXCEPT
 {
   // Validate input arguments
+  PLUGIN_ASSERT(nbInputs == 4);
+  for (int pos = 0; pos < 4; ++pos) {
+    PLUGIN_ASSERT(
+      inDesc[pos].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+      inDesc[pos].desc.type == (pos < 2 ? nvinfer1::DataType::kFLOAT : nvinfer1::DataType::kINT32));
+  }
+
+  PLUGIN_ASSERT(nbOutputs == 1);
+  PLUGIN_ASSERT(
+    outDesc[0].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+    outDesc[0].desc.type == nvinfer1::DataType::kINT32);
 }
 
 size_t KnnBatch::getWorkspaceSize(
@@ -169,7 +180,7 @@ nvinfer1::IPluginV2DynamicExt * KnnBatchCreator::createPlugin(
   for (int i = 0; i < fc->nbFields; ++i) {
     const char * attrName = fields[i].name;
     if (!strcmp(attrName, "top_k")) {
-      ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
+      PLUGIN_ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
       top_k = *static_cast<const int32_t *>(fields[i].data);
     }
   }
