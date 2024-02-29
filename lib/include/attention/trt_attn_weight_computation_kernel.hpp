@@ -6,7 +6,6 @@
 /**
  * @brief The launcher to invoke attention weight computation kernel.
  *
- * @tparam T The type of `queryFeature`, `keyFeature` and `output`.
  * @param B The size of batch.
  * @param Q The size of query.
  * @param L The size of local.
@@ -24,11 +23,10 @@
  *
  * @return cudaError_t CUDA error type.
  */
-template <typename T>
 cudaError_t AttentionWeightComputationLauncher(
   const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
   const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
-  const int * indexPairBatch, const int * indexPair, const T * queryFeature, const T * keyFeature,
-  T * output, cudaStream_t stream);
+  const int * indexPairBatch, const int * indexPair, const float * queryFeature,
+  const float * keyFeature, float * output, cudaStream_t stream);
 
 #endif  // ATTENTION_TRT_ATTN_WEIGHT_COMPUTATION_KERNEL_HPP_

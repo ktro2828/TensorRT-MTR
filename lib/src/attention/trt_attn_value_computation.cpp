@@ -105,7 +105,7 @@ int AttentionValueComputation::enqueue(
 
   switch (outDesc[0].type) {
     case nvinfer1::DataType::kFLOAT:
-      AttentionValueComputationLauncher<float>(
+      AttentionValueComputationLauncher(
         B, Q, L, K, numHead, headDim, reinterpret_cast<const int *>(queryBatchCnt),
         reinterpret_cast<const int *>(keyBatchCnt), reinterpret_cast<const int *>(indexPairBatch),
         reinterpret_cast<const int *>(indexPair), reinterpret_cast<const float *>(attnWeight),

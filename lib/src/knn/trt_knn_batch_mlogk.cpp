@@ -96,8 +96,8 @@ int KnnBatchMlogK::enqueue(
   void * output = outputs[0];
 
   switch (outDesc[0].type) {
-    case nvinfer1::DataType::kFLOAT:
-      KnnBatchMlogKLauncher<float>(
+    case nvinfer1::DataType::kINT32:
+      KnnBatchMlogKLauncher(
         n, m, mTopK, reinterpret_cast<const float *>(xyz),
         reinterpret_cast<const float *>(query_xyz), reinterpret_cast<const int *>(batch_idxs),
         reinterpret_cast<const int *>(query_batch_offsets), reinterpret_cast<int *>(output),

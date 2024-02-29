@@ -1,9 +1,8 @@
 #include "common/trt_plugin_helper.hpp"
 #include "knn/trt_knn_batch_kernel.hpp"
 
-template <typename T>
 __global__ void knn_batch_kernel(
-  const int32_t n, const int32_t m, const int32_t k, const T * xyz, const T * query_xyz,
+  const int32_t n, const int32_t m, const int32_t k, const float * xyz, const float * query_xyz,
   const int * batch_idxs, const int * query_batch_offsets, int * output)
 {
   const int pt_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -14,14 +13,14 @@ __global__ void knn_batch_kernel(
   xyz += pt_idx * 3;
   output += pt_idx * k;
 
-  T ox = xyz[0];
-  T oy = xyz[1];
-  T oz = xyz[2];
+  float ox = xyz[0];
+  float oy = xyz[1];
+  float oz = xyz[2];
 
-  T best[100];
+  float best[100];
   int best_idx[100];
   for (int i = 0; i < k; ++i) {
-    best[i] = static_cast<T>(1e20);
+    best[i] = 1e20;
     best_idx[i] = -1;
   }
 
@@ -29,10 +28,10 @@ __global__ void knn_batch_kernel(
   int start_idx = query_batch_offsets[batch_idx];
   int end_idx = query_batch_offsets[batch_idx + 1];
   for (int i = start_idx; i < end_idx; ++i) {
-    T x = query_xyz[i * 3 + 0];
-    T y = query_xyz[i * 3 + 1];
-    T z = query_xyz[i * 3 + 2];
-    T d2 = (ox - x) * (ox - x) + (oy - y) * (oy - y) + (oz - z) * (oz - z);
+    float x = query_xyz[i * 3 + 0];
+    float y = query_xyz[i * 3 + 1];
+    float z = query_xyz[i * 3 + 2];
+    float d2 = (ox - x) * (ox - x) + (oy - y) * (oy - y) + (oz - z) * (oz - z);
     for (int32_t p = 0; p < k; ++p) {
       if (d2 < best[p]) {
         for (int32_t q = k - 1; q > p; --q) {
@@ -51,20 +50,15 @@ __global__ void knn_batch_kernel(
   }
 }
 
-template <typename T>
 cudaError_t KnnBatchLauncher(
-  const int32_t n, const int32_t m, const int32_t k, const T * xyz, const T * query_xyz,
+  const int32_t n, const int32_t m, const int32_t k, const float * xyz, const float * query_xyz,
   const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream)
 {
   dim3 blocks(DIVUP(n, THREADS_PER_BLOCK));
   dim3 threads(THREADS_PER_BLOCK);
 
-  knn_batch_kernel<T><<<blocks, threads, 0, stream>>>(
+  knn_batch_kernel<<<blocks, threads, 0, stream>>>(
     n, m, k, xyz, query_xyz, batch_idxs, query_batch_offsets, output);
 
   return cudaGetLastError();
 }
-
-template cudaError_t KnnBatchLauncher<float>(
-  const int32_t n, const int32_t m, const int32_t k, const float * xyz, const float * query_xyz,
-  const int * batch_idxs, const int * query_batch_offsets, int * output, cudaStream_t stream);

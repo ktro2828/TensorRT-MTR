@@ -3,9 +3,8 @@
 #include <iostream>
 
 /**
- * @brief
+ * @brief Attention value computation kernel.
  *
- * @tparam T Type of `attnWeight` and `valueFeature`.
  * @tparam d The size of shared memory, which should be equal to `L`.
  * @param B The size of batch.
  * @param Q The size of query.
@@ -21,12 +20,12 @@
  * @param valueFeature Source value features, in shape [K*numHead*headDim].
  * @param output Output container, in shape [Q*numHead*headDim].
  */
-template <typename T, unsigned int d>
+template <unsigned int d>
 __global__ void attentionValueComputationKernel(
   const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
   const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
-  const int * indexPairBatch, const int * indexPair, const T * attnWeight, const T * valueFeature,
-  T * output)
+  const int * indexPairBatch, const int * indexPair, const float * attnWeight,
+  const float * valueFeature, float * output)
 {
   const int query_idx = blockIdx.x;
   const int head_idx = blockIdx.y;
@@ -43,7 +42,7 @@ __global__ void attentionValueComputationKernel(
     key_start_idx += keyBatchCnt[i];
   }
   // get shared variables
-  __shared__ T sharedAttnWeight[d];
+  __shared__ float sharedAttnWeight[d];
   __shared__ int sharedValueIdx[d];
   int cur_key_idx = 0;
   for (int i = 0; i < L; i += blockDim.x) {
@@ -61,12 +60,12 @@ __global__ void attentionValueComputationKernel(
 
   output += query_idx * numHead * headDim + head_idx * headDim + hdim_idx;
 
-  T attn_result = 0;
+  float attn_result = 0.0f;
   for (int i = 0; i < L; ++i) {
     if (sharedValueIdx[i] == -1) {
       continue;
     }
-    // TODO: fix bug
+    // TODO: fix bug (an illegal memory access was encountered)
     // attn_result +=
     //   sharedAttnWeight[i] *
     //   valueFeature[sharedValueIdx[i] * numHead * headDim + head_idx * headDim + hdim_idx];
@@ -74,12 +73,11 @@ __global__ void attentionValueComputationKernel(
   output[0] = attn_result;
 }
 
-template <typename T>
 cudaError_t AttentionValueComputationLauncher(
   const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
   const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
-  const int * indexPairBatch, const int * indexPair, const T * attnWeight, const T * valueFeature,
-  T * output, cudaStream_t stream)
+  const int * indexPairBatch, const int * indexPair, const float * attnWeight,
+  const float * valueFeature, float * output, cudaStream_t stream)
 {
   if (L > 512) {
     return cudaError::cudaErrorInvalidValue;
@@ -90,37 +88,37 @@ cudaError_t AttentionValueComputationLauncher(
 
   switch (L) {
     case 16:
-      attentionValueComputationKernel<T, 16><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<16><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     case 32:
-      attentionValueComputationKernel<T, 32><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<32><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     case 64:
-      attentionValueComputationKernel<T, 64><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<64><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     case 128:
-      attentionValueComputationKernel<T, 128><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<128><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     case 320:
-      attentionValueComputationKernel<T, 320><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<320><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     case 384:
-      attentionValueComputationKernel<T, 384><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<384><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
     default:
-      attentionValueComputationKernel<T, 512><<<blocks, threads, 0, stream>>>(
+      attentionValueComputationKernel<512><<<blocks, threads, 0, stream>>>(
         B, Q, L, K, numHead, headDim, queryBatchCnt, keyBatchCnt, indexPairBatch, indexPair,
         attnWeight, valueFeature, output);
       break;
@@ -128,9 +126,3 @@ cudaError_t AttentionValueComputationLauncher(
 
   return cudaGetLastError();
 }
-
-template cudaError_t AttentionValueComputationLauncher<float>(
-  const int32_t B, const int32_t Q, const int32_t L, const int32_t K, const int32_t numHead,
-  const int32_t headDim, const int * queryBatchCnt, const int * keyBatchCnt,
-  const int * indexPairBatch, const int * indexPair, const float * attnWeight,
-  const float * valueFeature, float * output, cudaStream_t stream);
