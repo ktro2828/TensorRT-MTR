@@ -44,17 +44,11 @@ __global__ void attentionValueComputationKernel(
   // get shared variables
   __shared__ float sharedAttnWeight[d];
   __shared__ int sharedValueIdx[d];
-  int cur_key_idx;
   for (int i = 0; i < L; i += blockDim.x) {
     sharedAttnWeight[i] = attnWeight[query_idx * L * numHead + i * numHead + head_idx];
 
-    cur_key_idx = indexPair[query_idx * L + i];
-    if (cur_key_idx == -1) {
-      sharedValueIdx[i] = -1;
-      continue;
-    }
-    cur_key_idx += key_start_idx;
-    sharedValueIdx[i] = cur_key_idx;
+    const int cur_key_idx = indexPair[query_idx * L + i];
+    sharedValueIdx[i] = cur_key_idx == -1 ? -1 : cur_key_idx + key_start_idx;
   }
   __syncthreads();
 
@@ -62,13 +56,11 @@ __global__ void attentionValueComputationKernel(
 
   float attn_result = 0.0f;
   for (int i = 0; i < L; ++i) {
-    if (sharedValueIdx[i] == -1) {
-      continue;
+    if (const int value_idx = sharedValueIdx[i]; value_idx != -1) {
+      // TODO: fix bug (an illegal memory access was encountered)
+      // attn_result += sharedAttnWeight[i] *
+      //                valueFeature[value_idx * numHead * headDim + head_idx * headDim + hdim_idx];
     }
-    // TODO: fix bug (an illegal memory access was encountered)
-    // attn_result +=
-    //   sharedAttnWeight[i] *
-    //   valueFeature[sharedValueIdx[i] * numHead * headDim + head_idx * headDim + hdim_idx];
   }
   output[0] = attn_result;
 }
