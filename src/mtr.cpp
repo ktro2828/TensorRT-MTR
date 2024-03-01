@@ -11,8 +11,7 @@ TrtMTR::TrtMTR(
   const BatchConfig & batch_config, const size_t max_workspace_size,
   const BuildConfig & build_config)
 : config_(config),
-  intention_point_(
-    IntentionPoint::fromCsv(config_.intention_point_filepath, config_.num_intention_point_cluster))
+  intention_point_(config_.intention_point_filepath, config_.num_intention_point_cluster)
 {
   builder_ = std::make_unique<MTRBuilder>(
     model_path, precision, batch_config, max_workspace_size, build_config);

@@ -33,17 +33,18 @@ public:
   static const size_t StateDim = IntentionPointDim;
 
   /**
-   * @brief Construct a new instance from csv file.
+   * @brief Construct a new Intention from csv file.
    *
-   * @param filename Path of csv file (.csv).
+   * @param csv_filepath Path to csv file.
    * @param num_cluster The number of clusters.
    */
-  static IntentionPoint fromCsv(const std::string & filename, const size_t num_cluster)
+  IntentionPoint(const std::string csv_filepath, const size_t num_cluster)
+  : num_cluster_(num_cluster)
   {
-    std::ifstream file(filename);
+    std::ifstream file(csv_filepath);
     if (!file.is_open()) {
       std::ostringstream err_msg;
-      err_msg << "Error opening file: " << filename << ". Please check if the file exists.";
+      err_msg << "Error opening file: " << csv_filepath << ". Please check if the file exists.";
       throw std::runtime_error(err_msg.str());
     }
 
@@ -64,19 +65,16 @@ public:
     }
     file.close();
 
-    std::unordered_map<std::string, std::vector<float>> data_map;
     for (const auto & [x, y, label] : buffer) {
-      data_map[label].emplace_back(x);
-      data_map[label].emplace_back(y);
+      data_map_[label].emplace_back(x);
+      data_map_[label].emplace_back(y);
     }
 
-    for (const auto & [key, values] : data_map) {
+    for (const auto & [key, values] : data_map_) {
       assert(
         ("The number of clusters is not same with the specified value",
          values.size() == StateDim * num_cluster));
     }
-
-    return IntentionPoint(data_map, num_cluster);
   }
 
   /**

@@ -8,7 +8,7 @@ int main()
 {
   const std::string filename = "./data/waymo64.csv";
   constexpr size_t num_cluster = 64;
-  auto intention_point = mtr::IntentionPoint::fromCsv(filename, num_cluster);
+  auto intention_point = mtr::IntentionPoint(filename, num_cluster);
 
   std::vector<std::string> label_names = {"VEHICLE", "PEDESTRIAN", "CYCLIST", "VEHICLE"};
   std::vector<float> points = intention_point.get_points(label_names);
