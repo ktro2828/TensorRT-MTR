@@ -15,7 +15,6 @@ struct LanePoint
 {
   /**
    * @brief Construct a new instance filling all elements by `0.0f`.
-   *
    */
   LanePoint() : data_({0.0f}) {}
 
@@ -45,18 +44,21 @@ struct LanePoint
    * @return float The x position.
    */
   float x() const { return x_; }
+
   /**
    * @brief Return the y position of the point.
    *
    * @return float The y position.
    */
   float y() const { return y_; }
+
   /**
    * @brief Return the z position of the point.
    *
    * @return float The z position.
    */
   float z() const { return z_; }
+
   /**
    * @brief Return the label of the point.
    *

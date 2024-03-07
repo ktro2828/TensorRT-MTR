@@ -61,6 +61,10 @@ struct BuildConfig
   // Supported calibration type
   const std::array<std::string, 4> valid_calib_type = {"Entropy", "Legacy", "Percentile", "MinMax"};
 
+  /**
+   * @brief Construct a new instance with default configurations.
+   *
+   */
   BuildConfig()
   : calib_type_str("MinMax"),
     dla_core_id(-1),
@@ -71,6 +75,17 @@ struct BuildConfig
   {
   }
 
+  /**
+   * @brief Construct a new instance with custom configurations.
+   *
+   * @param calib_type_str The name of calibration type which must be selected from [Entropy,
+   * MinMax].
+   * @param dla_core_id DLA core ID used by the process.
+   * @param quantize_first_layer The flag whether to quantize first layer.
+   * @param quantize_last_layer The flag whether to quantize last layer.
+   * @param profile_per_layer The flag to profile per-layer in IProfiler.
+   * @param clip_value The value to be clipped in quantization implicitly.
+   */
   explicit BuildConfig(
     const std::string & calib_type_str, const int dla_core_id = -1,
     const bool quantize_first_layer = false, const bool quantize_last_layer = false,
@@ -97,21 +112,66 @@ struct BuildConfig
 class MTRBuilder
 {
 public:
+  /**
+   * @brief Construct a new instance.
+   *
+   * @param model_path Path to engine or onnx file.
+   * @param precision The name of precision type.
+   * @param batch_config The configuration of min/opt/max batch.
+   * @param max_workspace_size The max workspace size.
+   * @param build_config The configuration of build.
+   */
   MTRBuilder(
     const std::string & model_path, const std::string & precision,
     const BatchConfig & batch_config = {1, 1, 1}, const size_t max_workspace_size = (1ULL << 30),
     const BuildConfig & build_config = BuildConfig());
+
+  /**
+   * @brief Destroy the instance.
+   */
   ~MTRBuilder();
 
+  /**
+   * @brief Setup engine for inference. After finishing setup successfully, `isInitialized` must
+   * return `true`.
+   */
   void setup();
 
+  /**
+   * @brief Check whether engine was initialized successfully.
+   *
+   * @return True if plugins were initialized successfully.
+   */
   bool isInitialized() const;
 
 private:
+  /**
+   * @brief Load engin file.
+   *
+   * @param filepath Engine file path.
+   * @return True if the engine were loaded successfully.
+   */
   bool loadEngine(const std::string & filepath);
+
+  /**
+   * @brief Build engine from onnx file.
+   *
+   * @param filepath Onnx file path.
+   * @param output_engine_filepath Output engine file path.
+   * @return True if the engine were built successfully.
+   */
   bool buildEngineFromOnnx(
     const std::string & filepath, const std::string & output_engine_filepath);
 
+  /**
+   * @brief A wrapper of `nvinfer1::IExecuteContext::enqueueV2`.
+   *
+   * @param bindings An array of pointers to input and output buffers for the network.
+   * @param stream A cuda stream on which the inference kernels will be enqueued.
+   * @param inputConsumed An optional event which will be signaled when the input buffers can be
+   * refilled with new data.
+   * @return True If the kernels were enqueued successfully.
+   */
   bool enqueueV2(void ** bindings, cudaStream_t stream, cudaEvent_t * inputConsumed);
 
   Logger logger_;
