@@ -44,7 +44,7 @@ cmake --build build -j${nproc}
 
 ```shell
 # with trtexec
-<PATH_TO_TRTEXEC_BIN>/trtexec --onnx=<PATH_TO_ONNX> --plugins=./build/libcustom_plugin.so
+<PATH_TO_TRTEXEC_BIN>/trtexec --onnx=<PATH_TO_ONNX> --staticPlugins=./build/libcustom_plugin.so
 
 # main
 ./build/main <PATH_TO_ONNX_OR_ENGINE>

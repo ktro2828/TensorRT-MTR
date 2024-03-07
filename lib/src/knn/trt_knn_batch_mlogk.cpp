@@ -59,6 +59,17 @@ void KnnBatchMlogK::configurePlugin(
   const nvinfer1::DynamicPluginTensorDesc * outDesc, int nbOutputs) TRT_NOEXCEPT
 {
   // Validate input arguments
+  PLUGIN_ASSERT(nbInputs == 4);
+  for (int pos = 0; pos < 4; ++pos) {
+    PLUGIN_ASSERT(
+      inDesc[pos].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+      inDesc[pos].desc.type == (pos < 2 ? nvinfer1::DataType::kFLOAT : nvinfer1::DataType::kINT32));
+  }
+
+  PLUGIN_ASSERT(nbOutputs == 1);
+  PLUGIN_ASSERT(
+    outDesc[0].desc.format == nvinfer1::TensorFormat::kLINEAR &&
+    outDesc[0].desc.type == nvinfer1::DataType::kINT32);
 }
 
 size_t KnnBatchMlogK::getWorkspaceSize(
@@ -85,8 +96,8 @@ int KnnBatchMlogK::enqueue(
   void * output = outputs[0];
 
   switch (outDesc[0].type) {
-    case nvinfer1::DataType::kFLOAT:
-      KnnBatchMlogKLauncher<float>(
+    case nvinfer1::DataType::kINT32:
+      KnnBatchMlogKLauncher(
         n, m, mTopK, reinterpret_cast<const float *>(xyz),
         reinterpret_cast<const float *>(query_xyz), reinterpret_cast<const int *>(batch_idxs),
         reinterpret_cast<const int *>(query_batch_offsets), reinterpret_cast<int *>(output),
@@ -171,7 +182,7 @@ nvinfer1::IPluginV2DynamicExt * KnnBatchMlogKCreator::createPlugin(
   for (int i = 0; i < fc->nbFields; ++i) {
     const char * attrName = fields[i].name;
     if (!strcmp(attrName, "top_k")) {
-      ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
+      PLUGIN_ASSERT(fields[i].type == nvinfer1::PluginFieldType::kINT32);
       top_k = *static_cast<const int32_t *>(fields[i].data);
     }
   }

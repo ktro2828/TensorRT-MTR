@@ -1,5 +1,5 @@
-#ifndef TRT_ATTN_WEIGHT_COMPUTATION_HPP
-#define TRT_ATTN_WEIGHT_COMPUTATION_HPP
+#ifndef ATTENTION__TRT_ATTN_WEIGHT_COMPUTATION_HPP_
+#define ATTENTION__TRT_ATTN_WEIGHT_COMPUTATION_HPP_
 
 #include "common/trt_plugin_base.hpp"
 
@@ -8,13 +8,13 @@ namespace trt_mtr
 /**
  * @brief The function to compute attention weight.
  *
- * @param query_batch_cnt <int; [B]>
- * @param key_batch_cnt <int; [B]>
- * @param index_pair_batch <int; [Q]>
- * @param index_pair <int; [Q, L]>
- * @param query_features <float; [Q, H, D]>
- * @param key_features <float; [Q, H, D]>
- * @param outputs <float; [Q, L, H]>
+ * @param queryBatchCnt <int; [B]>
+ * @param keyBatchCnt <int; [B]>
+ * @param indexPairBatch <int; [Q]>
+ * @param indexPair <int; [Q, L]>
+ * @param queryFeature <float; [Q, numHead, headDim]>
+ * @param keyFeature <float; [Q, numHead, headDim]>
+ * @param output <float; [Q, L, numHead]>
  */
 class AttentionWeightComputation : public TRTPluginBase
 {
@@ -82,4 +82,4 @@ public:
 };  // class AttentionWeightComputationCreator
 REGISTER_TENSORRT_PLUGIN(AttentionWeightComputationCreator);
 }  // namespace trt_mtr
-#endif  // TRT_ATTN_WEIGHT_COMPUTATION_HPP
+#endif  // ATTENTION__TRT_ATTN_WEIGHT_COMPUTATION_HPP_
