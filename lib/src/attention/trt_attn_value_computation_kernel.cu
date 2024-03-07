@@ -56,10 +56,11 @@ __global__ void attentionValueComputationKernel(
 
   float attn_result = 0.0f;
   for (int i = 0; i < L; ++i) {
-    if (const int value_idx = sharedValueIdx[i]; value_idx != -1) {
-      // TODO: fix bug (an illegal memory access was encountered)
-      // attn_result += sharedAttnWeight[i] *
-      //                valueFeature[value_idx * numHead * headDim + head_idx * headDim + hdim_idx];
+    // TODO: fix bug (an illegal memory access was encountered)
+    // value_idx need to guard with value_idx > 0 && value_idx < K
+    if (const int value_idx = sharedValueIdx[i]; value_idx > 0 && value_idx < K) {
+      attn_result += sharedAttnWeight[i] *
+                     valueFeature[value_idx * numHead * headDim + head_idx * headDim + hdim_idx];
     }
   }
   output[0] = attn_result;
