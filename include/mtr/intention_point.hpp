@@ -15,6 +15,9 @@ namespace mtr
 
 constexpr size_t IntentionPointDim = 2;
 
+/**
+ * @brief A class to load and store intention points.
+ */
 struct IntentionPoint
 {
 public:

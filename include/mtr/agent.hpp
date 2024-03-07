@@ -13,11 +13,13 @@ constexpr size_t AgentStateDim = 12;
 
 enum AgentLabel { VEHICLE = 0, PEDESTRIAN = 1, CYCLIST = 2 };
 
+/**
+ * @brief A class to represent a single state of an agent.
+ */
 struct AgentState
 {
   /**
    * @brief Construct a new instance filling all elements by `0.0f`.
-   *
    */
   AgentState() : data_({0.0f}) {}
 
@@ -65,6 +67,9 @@ private:
   std::array<float, Dim> data_;
 };
 
+/**
+ * @brief A class to represent the state history of an agent.
+ */
 struct AgentHistory
 {
   /**
@@ -195,6 +200,9 @@ private:
   const size_t max_time_length_;
 };
 
+/**
+ * @brief A class containing whole state histories of all agent.
+ */
 struct AgentData
 {
   /**
@@ -251,7 +259,7 @@ struct AgentData
   const size_t AgentNum;
   const size_t TimeLength;
   const size_t StateDim = AgentStateDim;
-  const size_t ClassNum = 3;  // TODO
+  const size_t ClassNum = 3;  // TODO: Do not use magic number.
 
   int sdc_index;
   std::vector<int> target_index;

@@ -17,8 +17,23 @@
 
 namespace mtr
 {
+/**
+ * @brief A configuration of MTR.
+ */
 struct MtrConfig
 {
+  /**
+   * @brief Construct a new Mtr Config object
+   *
+   * @param target_labels An array of target label names.
+   * @param num_mode The number of modes.
+   * @param num_future The number of future time step length predicted by MTR.
+   * @param num_predict_dim The number of state dimensions.
+   * @param max_num_polyline The max number of polylines which can be contained in a single input.
+   * @param offset_xy The offset value used in input pre-process.
+   * @param intention_point_filepath The path to intention points file.
+   * @param num_intention_point_cluster The number of clusters for intension points.
+   */
   MtrConfig(
     const std::vector<std::string> & target_labels = {"VEHICLE", "PEDESTRIAN", "CYCLIST"},
     const size_t num_mode = 6, const size_t num_future = 80, const size_t num_predict_dim = 7,
@@ -48,22 +63,68 @@ struct MtrConfig
   size_t num_intention_point_cluster;
 };
 
+/**
+ * @brief A class to inference with MTR.
+ */
 class TrtMTR
 {
 public:
+  /**
+   * @brief Construct a new instance.
+   *
+   * @param model_path The path to engine or onnx file.
+   * @param precision The precision type.
+   * @param config The configuration of model.
+   * @param batch_config The configuration of batch.
+   * @param max_workspace_size The max size of workspace.
+   * @param build_config The configuration of build.
+   */
   TrtMTR(
     const std::string & model_path, const std::string & precision,
     const MtrConfig & config = MtrConfig(), const BatchConfig & batch_config = {1, 1, 1},
     const size_t max_workspace_size = (1ULL << 30),
     const BuildConfig & build_config = BuildConfig());
 
+  /**
+   * @brief Execute inference.
+   *
+   * @param agent_data The agent data to input.
+   * @param polyline_data The polyline data to input.
+   * @return True if the inference finishes successfully.
+   */
   bool doInference(AgentData & agent_data, PolylineData & polyline_data);
 
+  /**
+   * @brief Return the model configuration.
+   *
+   * @return const MtrConfig& The model configuration which can not be updated.
+   */
   const MtrConfig & config() const { return config_; }
 
 private:
+  /**
+   * @brief Initialize pointers of cuda containers.
+   *
+   * @param agent_data The input agent data.
+   * @param polyline_data The input polyline data.
+   */
   void initCudaPtr(AgentData & agent_data, PolylineData & polyline_data);
+
+  /**
+   * @brief Execute pre-process.
+   *
+   * @param agent_data The input agent data.
+   * @param polyline_data The input polyline data.
+   * @return True if the pre-process finishes successfully.
+   */
   bool preProcess(AgentData & agent_data, PolylineData & polyline_data);
+
+  /**
+   * @brief Execute post-process.
+   *
+   * @param agent_data The input agent data.
+   * @return True if the post-process finishes successfully.
+   */
   bool postProcess(AgentData & agent_data);
 
   // model parameters
@@ -107,7 +168,19 @@ private:
   std::unique_ptr<float[]> h_debug_out_score_{nullptr};
   std::unique_ptr<float[]> h_debug_out_trajectory_{nullptr};
 
+  /**
+   * @brief Display input data after finishing pre-process.
+   *
+   * @param agent_data The input agent data.
+   * @param polyline_data The input polyline data.
+   */
   void debugPreprocess(const AgentData & agent_data, const PolylineData & polyline_data);
+
+  /**
+   * @brief Display output data after finishing post-process.
+   *
+   * @param agent_data The input agent data.
+   */
   void debugPostprocess(const AgentData & agent_data);
 };  // class TrtMTR
 }  // namespace mtr

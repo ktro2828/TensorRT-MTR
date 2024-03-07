@@ -18,6 +18,13 @@
 
 namespace cuda
 {
+/**
+ * @brief Throw if the input cuda error is not `cudaSuccess`.
+ *
+ * @param e The cuda error types.
+ * @param f The file name.
+ * @param n The line number.
+ */
 inline void check_error(const ::cudaError_t e, const char * f, int n)
 {
   if (e != ::cudaSuccess) {
