@@ -55,7 +55,7 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     cuda::make_unique<float[]>(agent_data.AgentNum * agent_data.TimeLength * agent_data.StateDim);
   d_target_state_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.StateDim);
   d_intention_points_ =
-    cuda::make_unique<float[]>(agent_data.AgentNum * config_.num_intention_point_cluster * 2);
+    cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_intention_point_cluster * 2);
   d_polyline_ = cuda::make_unique<float[]>(
     polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim);
   d_topk_index_ = cuda::make_unique<int[]>(config_.max_num_polyline);
@@ -128,7 +128,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
   const auto intention_points = intention_point_.get_points(target_label_names);
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_intention_points_.get(), intention_points.data(),
-    sizeof(float) * agent_data.AgentNum * config_.num_intention_point_cluster * 2,
+    sizeof(float) * agent_data.TargetNum * config_.num_intention_point_cluster * 2,
     cudaMemcpyHostToDevice, stream_));
 
   // DEBUG
