@@ -22,7 +22,8 @@ namespace trt_mtr
 class TRTPluginBase : public nvinfer1::IPluginV2DynamicExt
 {
 public:
-  TRTPluginBase(const std::string & name) : mLayerName(name) {}
+  TRTPluginBase(const std::string & name)
+  : mLayerName(name) {}
 
   /* IPluginV2 methods */
 

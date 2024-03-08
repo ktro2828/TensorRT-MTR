@@ -5,6 +5,7 @@ Support of inference with TensorRT for [sshaoshuai/MTR](https://github.com/sshao
 ## Network
 
 ### Inputs
+
 - `trajectory <float; [B, N, Tp, Da]>`
 - `trajectory_mask <bool: [B, N, Tp]>`
 - `polyline <float: [B, K, P, Dp]>`
@@ -15,7 +16,7 @@ Support of inference with TensorRT for [sshaoshuai/MTR](https://github.com/sshao
 - `label_index <int: [N]>`
 - `intention_points <float: [B, 64, 3]>`
 
-where, 
+where,
 
 - `B` ...The number of target agents
 - `N` ...The number of all agents
@@ -26,6 +27,7 @@ where,
 - `Dp` ...The number of polyline state dimensions(=`9`)
 
 ### Outputs
+
 - `scores <float: [N, M]>`
 - `trajectory <float: [N, M, Tf, Dt]>`
 

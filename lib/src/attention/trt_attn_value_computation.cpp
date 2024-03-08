@@ -10,7 +10,8 @@ static const char * PLUGIN_VERSION{"1"};
 static const char * PLUGIN_NAME{"TRTAttentionValueComputation"};
 }  // namespace
 
-AttentionValueComputation::AttentionValueComputation(const std::string & name) : TRTPluginBase(name)
+AttentionValueComputation::AttentionValueComputation(const std::string & name)
+: TRTPluginBase(name)
 {
 }
 

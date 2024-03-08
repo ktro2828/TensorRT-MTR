@@ -25,7 +25,8 @@ public:
   {
   }
 
-  LogStreamConsumerBuffer(LogStreamConsumerBuffer && other) : mOutput(other.mOutput) {}
+  LogStreamConsumerBuffer(LogStreamConsumerBuffer && other)
+  : mOutput(other.mOutput) {}
 
   ~LogStreamConsumerBuffer()
   {

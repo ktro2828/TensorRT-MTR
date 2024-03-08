@@ -145,8 +145,7 @@ bool MTRBuilder::buildEngineFromOnnx(
     if (num_available_dla > 0) {
       std::cout << "###" << num_available_dla << " DLAs are supported! ###" << std::endl;
     } else {
-      std::cout << "###Warning : "
-                << "No DLA is supported! ###" << std::endl;
+      std::cout << "###Warning : " << "No DLA is supported! ###" << std::endl;
     }
     config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
     config->setDLACore(build_config_->dla_core_id);

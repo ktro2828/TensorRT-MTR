@@ -9,14 +9,18 @@ namespace mtr
 {
 constexpr std::size_t PointStateDim = 7;
 
-enum PolylineLabel { LANE = 0, ROAD_LINE = 1, ROAD_EDGE = 2, CROSSWALK = 3 };
+enum PolylineLabel { LANE = 0,
+                     ROAD_LINE = 1,
+                     ROAD_EDGE = 2,
+                     CROSSWALK = 3 };
 
 struct LanePoint
 {
   /**
    * @brief Construct a new instance filling all elements by `0.0f`.
    */
-  LanePoint() : data_({0.0f}) {}
+  LanePoint()
+  : data_({0.0f}) {}
 
   /**
    * @brief Construct a new instance with specified values.

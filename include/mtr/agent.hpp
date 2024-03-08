@@ -11,7 +11,9 @@ namespace mtr
 {
 constexpr size_t AgentStateDim = 12;
 
-enum AgentLabel { VEHICLE = 0, PEDESTRIAN = 1, CYCLIST = 2 };
+enum AgentLabel { VEHICLE = 0,
+                  PEDESTRIAN = 1,
+                  CYCLIST = 2 };
 
 /**
  * @brief A class to represent a single state of an agent.
@@ -21,7 +23,8 @@ struct AgentState
   /**
    * @brief Construct a new instance filling all elements by `0.0f`.
    */
-  AgentState() : data_({0.0f}) {}
+  AgentState()
+  : data_({0.0f}) {}
 
   /**
    * @brief Construct a new instance with specified values.
