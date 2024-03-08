@@ -57,8 +57,8 @@ __global__ void attentionValueComputationKernel(
   float attn_result = 0.0f;
   for (int i = 0; i < L; ++i) {
     // TODO: fix bug (an illegal memory access was encountered)
-    // value_idx need to guard with value_idx > 0 && value_idx < K
-    if (const int value_idx = sharedValueIdx[i]; value_idx > 0 && value_idx < K) {
+    // value_idx need to guard with value_idx >= 0 && value_idx < K
+    if (const int value_idx = sharedValueIdx[i]; value_idx >= 0 && value_idx < K) {
       attn_result += sharedAttnWeight[i] *
                      valueFeature[value_idx * numHead * headDim + head_idx * headDim + hdim_idx];
     }
@@ -78,6 +78,7 @@ cudaError_t AttentionValueComputationLauncher(
 
   dim3 blocks(Q, numHead);
   dim3 threads(headDim);
+  printf("K: %i\n", K);
 
   switch (L) {
     case 16:
