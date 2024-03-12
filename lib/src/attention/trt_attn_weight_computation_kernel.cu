@@ -49,6 +49,10 @@ __global__ void attentionWeightComputationKernel(
 
   // get real key index
   const int batch_idx = indexPairBatch[query_idx];
+  if (batch_idx < 0) {
+    return;
+  }
+
   int key_start_idx = 0;
   for (int i = 0; i < batch_idx; ++i) {
     key_start_idx += keyBatchCnt[i];

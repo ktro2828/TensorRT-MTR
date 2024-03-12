@@ -25,6 +25,10 @@ __global__ void knn_batch_kernel(
   }
 
   int batch_idx = batch_idxs[pt_idx];
+  if (batch_idx < 0) {
+    return;
+  }
+
   int start_idx = query_batch_offsets[batch_idx];
   int end_idx = query_batch_offsets[batch_idx + 1];
   for (int i = start_idx; i < end_idx; ++i) {

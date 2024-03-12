@@ -37,6 +37,10 @@ __global__ void attentionValueComputationKernel(
 
   // get key_start_idx
   const int batch_idx = indexPairBatch[query_idx];
+  if (batch_idx < 0) {
+    return;
+  }
+
   int key_start_idx = 0;
   for (int i = 0; i < batch_idx; ++i) {
     key_start_idx += keyBatchCnt[i];
@@ -78,7 +82,6 @@ cudaError_t AttentionValueComputationLauncher(
 
   dim3 blocks(Q, numHead);
   dim3 threads(headDim);
-  printf("K: %i\n", K);
 
   switch (L) {
     case 16:
