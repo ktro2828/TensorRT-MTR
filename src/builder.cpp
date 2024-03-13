@@ -15,6 +15,7 @@ MTRBuilder::MTRBuilder(
   max_workspace_size_(max_workspace_size)
 {
   build_config_ = std::make_unique<const BuildConfig>(build_config);
+  runtime_ = TrtUniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger_));
 }
 
 MTRBuilder::~MTRBuilder()
@@ -67,7 +68,7 @@ void MTRBuilder::setup()
     }
     cache_engine_path.replace_extension(ext);
     if (fs::exists(cache_engine_path)) {
-      std::cout << "Loading... " << cache_engine_path << std::endl;
+      std::cout << "Loading cached engine... " << cache_engine_path << std::endl;
       if (!loadEngine(cache_engine_path)) {
         std::cerr << "Fail to load engine" << std::endl;
         is_initialized_ = false;
@@ -288,23 +289,22 @@ bool MTRBuilder::buildEngineFromOnnx(
     return false;
   }
 
-  // TODO: skip to save engine temporally
-  // save engine
-  // #if TENSORRT_VERSION_MAJOR < 8
-  //   auto data = TrtUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
-  // #endif
-  //   std::ofstream file;
-  //   file.open(output_engine_filepath, std::ios::binary | std::ios::out);
-  //   if (!file.is_open()) {
-  //     return false;
-  //   }
-  // #if TENSORRT_VERSION_MAJOR < 8
-  //   file.write(reinterpret_cast<const char *>(data->data()), data->size());
-  // #else
-  //   file.write(reinterpret_cast<const char *>(plan->data()), plan->size());
-  // #endif
+// save engine
+#if TENSORRT_VERSION_MAJOR < 8
+  auto data = TrtUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
+#endif
+  std::ofstream file;
+  file.open(output_engine_filepath, std::ios::binary | std::ios::out);
+  if (!file.is_open()) {
+    return false;
+  }
+#if TENSORRT_VERSION_MAJOR < 8
+  file.write(reinterpret_cast<const char *>(data->data()), data->size());
+#else
+  file.write(reinterpret_cast<const char *>(plan->data()), plan->size());
+#endif
 
-  // file.close();
+  file.close();
 
   return true;
 }
