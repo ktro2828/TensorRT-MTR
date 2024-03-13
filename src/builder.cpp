@@ -15,6 +15,7 @@ MTRBuilder::MTRBuilder(
   max_workspace_size_(max_workspace_size)
 {
   build_config_ = std::make_unique<const BuildConfig>(build_config);
+  runtime_ = TrtUniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger_));
 }
 
 MTRBuilder::~MTRBuilder()
@@ -67,7 +68,7 @@ void MTRBuilder::setup()
     }
     cache_engine_path.replace_extension(ext);
     if (fs::exists(cache_engine_path)) {
-      std::cout << "Loading... " << cache_engine_path << std::endl;
+      std::cout << "Loading cached engine... " << cache_engine_path << std::endl;
       if (!loadEngine(cache_engine_path)) {
         std::cerr << "Fail to load engine" << std::endl;
         is_initialized_ = false;
