@@ -187,10 +187,6 @@ bool MTRBuilder::buildEngineFromOnnx(
   const auto num_points = input2_dims.d[2];
   const auto num_polyline_dims = input2_dims.d[3];
 
-  if (num_targets > 1) {
-    batch_config_[0] = num_targets;
-  }
-
   if (build_config_->profile_per_layer) {
     auto profile = builder->createOptimizationProfile();
     // trajectory
@@ -259,7 +255,23 @@ bool MTRBuilder::buildEngineFromOnnx(
     profile->setDimensions(
       input5_name, nvinfer1::OptProfileSelector::kMAX,
       nvinfer1::Dims3{batch_config_.at(2), num_agents, 3});
-    // track index & label index is skipped because of 1D
+    // track index
+    const auto input6_name = network->getInput(6)->getName();
+    profile->setDimensions(
+      input6_name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims{batch_config_.at(0)});
+    profile->setDimensions(
+      input6_name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims{batch_config_.at(1)});
+    profile->setDimensions(
+      input6_name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims{batch_config_.at(2)});
+    // intention points
+    const auto input7_name = network->getInput(7)->getName();
+    profile->setDimensions(
+      input7_name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims3{batch_config_.at(0), 64, 2});
+    profile->setDimensions(
+      input7_name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims3{batch_config_.at(0), 64, 2});
+    profile->setDimensions(
+      input7_name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims3{batch_config_.at(0), 64, 2});
+
     config->addOptimizationProfile(profile);
   }
 

@@ -70,7 +70,7 @@ struct BuildConfig
     dla_core_id(-1),
     quantize_first_layer(false),
     quantize_last_layer(false),
-    profile_per_layer(false),
+    profile_per_layer(true),
     clip_value(0.0)
   {
   }
