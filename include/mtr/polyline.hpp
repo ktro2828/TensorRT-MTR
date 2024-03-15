@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath>
+#include <tuple>
 #include <vector>
 
 namespace mtr
@@ -149,6 +150,13 @@ struct PolylineData
   std::size_t PolylineNum;
   const std::size_t PointNum;
   const std::size_t StateDim = PointStateDim;
+
+  /**
+   * @brief Return the data shape.
+   *
+   * @return std::tuple<size_t, size_t, size_t> (PolylineNum, PointNum, StateDim).
+   */
+  std::tuple<size_t, size_t, size_t> shape() const { return {PolylineNum, PointNum, StateDim}; }
 
   /**
    * @brief Return the address pointer of data array.

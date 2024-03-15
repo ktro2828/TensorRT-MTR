@@ -5,6 +5,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace mtr
@@ -266,6 +267,13 @@ struct AgentData
   std::vector<int> label_index;
   std::vector<int> target_label_index;
   std::vector<float> timestamps;
+
+  /**
+   * @brief Return the data shape.
+   *
+   * @return std::tuple<size_t, size_t, size_t> (AgentNum, TimeLength, StateDim).
+   */
+  std::tuple<size_t, size_t, size_t> shape() const { return {AgentNum, TimeLength, StateDim}; }
 
   /**
    * @brief Return the address pointer of data array.
