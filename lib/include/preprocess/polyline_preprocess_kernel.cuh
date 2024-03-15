@@ -44,12 +44,12 @@ __global__ void setPreviousPositionKernel(
  * @param targetState Source state of target agents, in shape [B*AgentDim].
  * @param PointDim The number of point state dimensions.
  * @param inPolyline Source polylines, in shape [L*P*PointDim].
- * @param outPolyline Output polylines, in shape [K*P*PointDim].
+ * @param topkIndex Indices of topk elements, in shape [K].
  */
 __global__ void extractTopkKernel(
   const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
   const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
-  float * outPolyline);
+  int * topkIndex);
 
 /**
  * @brief Calculate the magnitudes of polylines.
@@ -68,7 +68,7 @@ __global__ void calculatePolylineCenterKernel(
 
 /**
  * @brief In cases of the number of batch polylines (L) is greater than K,
- *  extacts the topK elements.
+ *  extracts the topK elements.
  *
  * @param L The number of source polylines.
  * @param K The number of polylines expected as the model input.

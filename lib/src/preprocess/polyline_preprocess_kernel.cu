@@ -81,14 +81,15 @@ __global__ void setPreviousPositionKernel(
   }
 }
 
+template <unsigned int d>
 __global__ void extractTopkKernel(
   const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
   const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
-  float * outPolyline)
+  int * topkIndex)
 {
   // --- pseudo code ---
   // mask = All(polyline != 0.0, dim=2)
-  // polylineCenter = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
+  // center = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
   // offset = rotateAlongZ((offset_x, offset_y), target_state[:, 6])
   // targetOffsetPos = target_state[:, 0:2] + offset
   // distances = (target_offset_pos - center)
@@ -98,7 +99,34 @@ __global__ void extractTopkKernel(
 
   // int targetIdx = blockIdx.x;
 
-  // const float targetX = targetState[targetIdx];
+  int l = blockIdx.x;
+  int b = blockIdx.y;
+  int p = threadIdx.x;
+
+  if (l >= L || b >= B) {
+    return;
+  }
+  const float target_x = targetState[b];
+  const float target_y = targetState[b + 1];
+  const float target_yaw = targetState[b + 6];
+  const float target_cos = cos(target_yaw);
+  const float target_sin = sin(target_yaw);
+  const float trans_target_x = target_cos * offsetX + target_sin * offsetY + target_x;
+  const float trans_target_y = -target_sin * offsetX + target_cos * offsetY + target_y;
+
+  __shared__ float sharedTopkValue[d];
+  __shared__ int sharedTopkIndex[d];
+  for (int i = 0; i < L; i += blockDim.x) {
+    int valid_cnt = 0;
+    for (int p = 0; p < P; ++p) {
+      bool is_all_zero = true;
+      for (int d = 0; d < PointDim; ++d) {
+        is_all_zero *= inPolyline[i * L * P * PointDim + p * PointDim + d];
+      }
+    }
+  }
+
+  // const float targetX = targetState[];
   // const float targetY = targetState[targetIdx + 1];
   // const float targetYaw = targetState[targetIdx + 6];
   // const float targetCos = cos(targetYaw);
