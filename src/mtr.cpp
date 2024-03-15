@@ -152,7 +152,6 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   // TODO
   if (config_.max_num_polyline < polyline_data.PolylineNum) {
-    std::cout << "here" << std::endl;
     CHECK_CUDA_ERROR(polylinePreprocessWithTopkLauncher(
       polyline_data.PolylineNum, config_.max_num_polyline, polyline_data.PointNum,
       polyline_data.StateDim, d_polyline_.get(), agent_data.TargetNum, agent_data.StateDim,
@@ -170,7 +169,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   event_debugger_.printElapsedTime(stream_);
 
-  debugPreprocess(agent_data, polyline_data);
+  // debugPreprocess(agent_data, polyline_data);
 
   return true;
 }
@@ -186,7 +185,7 @@ bool TrtMTR::postProcess(AgentData & agent_data)
     stream_));
   event_debugger_.printElapsedTime(stream_);
 
-  debugPostprocess(agent_data);
+  // debugPostprocess(agent_data);
 
   return true;
 }

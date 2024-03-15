@@ -106,10 +106,12 @@ int main(int argc, char ** argv)
   debugger.printElapsedTime("Data loading time: ");
 
   for (int i = 0; i < num_repeat; ++i) {
+    debugger.createEvent();
     if (!model->doInference(agent_data, polyline_data)) {
       std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
     } else {
       std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
     }
+    debugger.printElapsedTime("Inference time: ");
   }
 }
