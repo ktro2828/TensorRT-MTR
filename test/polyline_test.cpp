@@ -35,6 +35,10 @@ int main()
   }
 
   mtr::PolylineData data(points, K, P, 2.0f);
+  const auto [num_polyline, num_point, num_dim] = data.shape();
+  assert(num_polyline == K);
+  assert(num_point == P);
+  assert(num_dim == D);
 
   std::cout << "=== Polyline data ===\n";
   const float * data_ptr = data.data_ptr();
