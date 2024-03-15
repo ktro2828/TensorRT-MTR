@@ -33,7 +33,17 @@ bool TrtMTR::doInference(AgentData & agent_data, PolylineData & polyline_data)
     return false;
   }
 
-  /* TODO: do inference */
+  std::vector<void *> buffer = {
+    d_in_trajectory_.get(),    d_in_trajectory_mask_.get(), d_in_polyline_.get(),
+    d_in_polyline_mask_.get(), d_in_polyline_center_.get(), d_in_last_pos_.get(),
+    d_target_index_.get(),     d_intention_points_.get(),   d_out_trajectory_.get(),
+    d_out_score_.get(),
+  };
+
+  if (!builder_->enqueueV2(buffer.data(), stream_, nullptr)) {
+    std::cerr << "Fail to do inference" << std::endl;
+    return false;
+  };
 
   if (!postProcess(agent_data)) {
     std::cerr << "Fail to preprocess" << std::endl;
