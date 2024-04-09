@@ -11,46 +11,26 @@ static const std::string USAGE =
 
 mtr::AgentData load_agent_data()
 {
-  constexpr int B = 2;
-  constexpr int N = 4;
-  constexpr int T = 5;
+  // NOTE: current expected input size is (3, 55, 11, 12)
+  constexpr int B = 3;
+  constexpr int N = 55;
+  constexpr int T = 11;
   constexpr int D = 12;
   constexpr int sdc_index = 1;
 
-  std::vector<int> target_index{0, 2};
-  std::vector<int> label_index{0, 0, 2, 1};
-  std::vector<float> timestamps{1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  std::vector<int> target_index{0, 1, 2};
+  std::vector<float> timestamps{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
 
-  float trajectory[N][T][D] = {
-    {
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, M_PI / 2.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-      {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, M_PI / 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 1.0f},
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-    },
-    {
-      {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, M_PI / 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 0.0f},
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 0.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 0.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 1.0f},
-    },
-    {
-      {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, M_PI / 2.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 1.0f},
-      {7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, M_PI / 2.0f, 7.0f, 7.0f, 7.0f, 7.0f, 1.0f},
-    },
-    {
-      {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, M_PI / 2.0f, 4.0f, 4.0f, 4.0f, 4.0f, 0.0f},
-      {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, M_PI / 2.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-      {6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, M_PI / 2.0f, 6.0f, 6.0f, 6.0f, 6.0f, 0.0f},
-      {7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, M_PI / 2.0f, 7.0f, 7.0f, 7.0f, 7.0f, 0.0f},
-      {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, M_PI / 2.0f, 8.0f, 8.0f, 8.0f, 8.0f, 1.0f},
-    },
-  };
+  std::vector<int> label_index;
+  float trajectory[N][T][D];
+  for (int n = 0; n < N; ++n) {
+    label_index.emplace_back(0);
+    for (int t = 0; t < T; ++t) {
+      for (int d = 0; d < D; ++d) {
+        trajectory[n][t][d] = static_cast<float>(n * t + d);
+      }
+    }
+  }
 
   std::vector<mtr::AgentHistory> histories;
   histories.reserve(N);
@@ -126,10 +106,12 @@ int main(int argc, char ** argv)
   debugger.printElapsedTime("Data loading time: ");
 
   for (int i = 0; i < num_repeat; ++i) {
+    debugger.createEvent();
     if (!model->doInference(agent_data, polyline_data)) {
       std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
     } else {
       std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
     }
+    debugger.printElapsedTime("Inference time: ");
   }
 }

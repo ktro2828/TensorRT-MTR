@@ -144,6 +144,17 @@ public:
    */
   bool isInitialized() const;
 
+  /**
+   * @brief A wrapper of `nvinfer1::IExecuteContext::enqueueV2`.
+   *
+   * @param bindings An array of pointers to input and output buffers for the network.
+   * @param stream A cuda stream on which the inference kernels will be enqueued.
+   * @param inputConsumed An optional event which will be signaled when the input buffers can be
+   * refilled with new data.
+   * @return True If the kernels were enqueued successfully.
+   */
+  bool enqueueV2(void ** bindings, cudaStream_t stream, cudaEvent_t * inputConsumed);
+
 private:
   /**
    * @brief Load engin file.
@@ -162,17 +173,6 @@ private:
    */
   bool buildEngineFromOnnx(
     const std::string & filepath, const std::string & output_engine_filepath);
-
-  /**
-   * @brief A wrapper of `nvinfer1::IExecuteContext::enqueueV2`.
-   *
-   * @param bindings An array of pointers to input and output buffers for the network.
-   * @param stream A cuda stream on which the inference kernels will be enqueued.
-   * @param inputConsumed An optional event which will be signaled when the input buffers can be
-   * refilled with new data.
-   * @return True If the kernels were enqueued successfully.
-   */
-  bool enqueueV2(void ** bindings, cudaStream_t stream, cudaEvent_t * inputConsumed);
 
   Logger logger_;
   TrtUniquePtr<nvinfer1::IRuntime> runtime_;
