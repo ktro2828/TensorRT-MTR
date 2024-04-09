@@ -1,14 +1,14 @@
 {
-    "words": [
-        "calib",
-        "nvinfer",
-        "onehot",
-        "ONNX",
-        "polyline",
-        "polylines",
-        "Postprocess",
-        "Preprocess",
-        "topk",
-        "trtexec"
-    ]
+  "words": [
+    "calib",
+    "nvinfer",
+    "onehot",
+    "ONNX",
+    "polyline",
+    "polylines",
+    "Postprocess",
+    "Preprocess",
+    "topk",
+    "trtexec"
+  ]
 }
