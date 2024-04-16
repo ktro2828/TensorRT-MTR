@@ -121,7 +121,8 @@ int main(int argc, char ** argv)
 
   for (int i = 0; i < num_repeat; ++i) {
     debugger.createEvent();
-    if (!model->doInference(agent_data, polyline_data)) {
+    std::vector<mtr::PredictedTrajectory> trajectories;
+    if (!model->doInference(agent_data, polyline_data, trajectories)) {
       std::cerr << "===== [FAIL]: Fail to inference!! =====" << std::endl;
     } else {
       std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
