@@ -50,10 +50,36 @@ struct TrtDeleter
 
 template <typename T>
 using TrtUniquePtr = std::unique_ptr<T, TrtDeleter<T>>;
-using BatchConfig = std::array<int32_t, 3>;
 
 enum PrecisionType { FP32 = 0, FP16 = 1, INT8 = 2 };
 enum CalibrationType { ENTROPY = 0, LEGACY = 1, PERCENTILE = 2, MINMAX = 3 };
+
+struct BatchOptConfig
+{
+  /**
+   * @brief Construct a new OptimizationConfig for a static shape inference.
+   *
+   * @param value
+   */
+  BatchOptConfig(const int32_t value) : k_min(value), k_opt(value), k_max(value), is_dynamic(false)
+  {
+  }
+
+  /**
+   * @brief Construct a new OptimizationConfig for a dynamic shape inference.
+   *
+   * @param k_min
+   * @param k_opt
+   * @param k_max
+   */
+  BatchOptConfig(const int32_t k_min, const int32_t k_opt, const int32_t k_max)
+  : k_min(k_min), k_opt(k_opt), k_max(k_max), is_dynamic(true)
+  {
+  }
+
+  int32_t k_min, k_opt, k_max;
+  bool is_dynamic;
+};
 
 struct BuildConfig
 {
@@ -63,14 +89,19 @@ struct BuildConfig
   // type for calibration
   CalibrationType calibration;
 
-  // flag of dynamic shape
-  bool is_dynamic;
+  BatchOptConfig batch_target;
+  BatchOptConfig batch_agent;
 
   /**
    * @brief Construct a new instance with default configurations.
    */
-  BuildConfig(const bool is_dynamic = false)
-  : precision(PrecisionType::FP32), calibration(CalibrationType::MINMAX), is_dynamic(is_dynamic)
+  BuildConfig(
+    const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 50),
+    const BatchOptConfig & batch_agent = BatchOptConfig(10, 50, 100))
+  : precision(PrecisionType::FP32),
+    calibration(CalibrationType::MINMAX),
+    batch_target(batch_target),
+    batch_agent(batch_agent)
   {
   }
 
@@ -83,10 +114,16 @@ struct BuildConfig
    */
   BuildConfig(
     const PrecisionType & precision, const CalibrationType & calibration,
-    const bool is_dynamic = false)
-  : precision(precision), calibration(calibration), is_dynamic(is_dynamic)
+    const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 50),
+    const BatchOptConfig & batch_agent = BatchOptConfig(10, 50, 100))
+  : precision(precision),
+    calibration(calibration),
+    batch_target(batch_target),
+    batch_agent(batch_agent)
   {
   }
+
+  bool is_dynamic() const { return batch_target.is_dynamic || batch_agent.is_dynamic; }
 };  // struct BuildConfig
 
 class MTRBuilder
@@ -102,7 +139,7 @@ public:
    */
   MTRBuilder(
     const std::string & model_path, const BuildConfig & build_config = BuildConfig(),
-    const BatchConfig & batch_config = {1, 1, 1}, const size_t max_workspace_size = (1ULL << 30));
+    const size_t max_workspace_size = (1ULL << 30));
 
   /**
    * @brief Destroy the instance.
@@ -169,7 +206,6 @@ private:
   TrtUniquePtr<nvinfer1::IExecutionContext> context_;
 
   fs::path model_filepath_;
-  BatchConfig batch_config_;
   size_t max_workspace_size_;
   std::unique_ptr<const BuildConfig> build_config_;
 

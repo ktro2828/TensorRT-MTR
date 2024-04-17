@@ -17,8 +17,53 @@
 
 #include <NvInfer.h>
 
+#include <map>
+#include <string>
+
 namespace mtr
 {
+
+struct OptimizationConfig
+{
+  /**
+   * @brief Construct a new OptimizationConfig for a static shape inference.
+   *
+   * @param value
+   */
+  OptimizationConfig(const int32_t value)
+  : k_min(value), k_opt(value), k_max(value), is_dynamic(false)
+  {
+  }
+
+  /**
+   * @brief Construct a new OptimizationConfig for a dynamic shape inference.
+   *
+   * @param k_min
+   * @param k_opt
+   * @param k_max
+   */
+  OptimizationConfig(const int32_t k_min, const int32_t k_opt, const int32_t k_max)
+  : k_min(k_min), k_opt(k_opt), k_max(k_max), is_dynamic(true)
+  {
+  }
+
+  int32_t k_min, k_opt, k_max;
+  bool is_dynamic;
+};
+
+class ConfigBuilder
+{
+public:
+  ConfigBuilder(const bool is_dynamic) : is_dynamic(is_dynamic) {}
+
+  bool has_field(const std::string & name) const { return fields_.count(name) != 0; }
+
+  bool is_dynamic;
+
+private:
+  std::map<std::string, OptimizationConfig> fields_;
+};
+
 void createOptimizationProfile(
   nvinfer1::IBuilder * builder, nvinfer1::INetworkDefinition * network,
   nvinfer1::IBuilderConfig * config)

@@ -65,10 +65,8 @@ std::string getCalibrationName(const CalibrationType & type)
 }  // namespace
 MTRBuilder::MTRBuilder(
   const std::string & model_filepath, const BuildConfig & build_config,
-  const BatchConfig & batch_config, const size_t max_workspace_size)
-: model_filepath_(model_filepath),
-  batch_config_(batch_config),
-  max_workspace_size_(max_workspace_size)
+  const size_t max_workspace_size)
+: model_filepath_(model_filepath), max_workspace_size_(max_workspace_size)
 {
   build_config_ = std::make_unique<const BuildConfig>(build_config);
   runtime_ = TrtUniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger_));
@@ -191,145 +189,138 @@ bool MTRBuilder::buildEngineFromOnnx(
     return false;
   }
 
-  const auto input0 = network->getInput(0);
-  const auto input0_dims = input0->getDimensions();
-  const auto num_targets = input0_dims.d[0];
-  auto num_agents = input0_dims.d[1];
-  const auto num_past_frames = input0_dims.d[2];
-  const auto num_agent_dims = input0_dims.d[3];
-
-  const auto input2 = network->getInput(2);
-  const auto input2_dims = input2->getDimensions();
-  const auto num_polylines = input2_dims.d[1];
-  const auto num_points = input2_dims.d[2];
-  const auto num_polyline_dims = input2_dims.d[3];
-
-  // if (num_targets > 1) {
-  //   batch_config_[0] = num_targets;
-  // }
-
-  if (num_agents == -1) {
-    num_agents = 10;
-  }
-
-  std::cout << "batch_config: (" << batch_config_.at(0) << ", " << batch_config_.at(1) << ", "
-            << batch_config_.at(2) << ")\n";
-
-  if (build_config_->is_dynamic) {
+  if (isDynamic()) {
     auto profile = builder->createOptimizationProfile();
+    const auto input0 = network->getInput(0);
+    const auto input0_dims = input0->getDimensions();
+    const auto num_past_frames = input0_dims.d[2];
+    const auto num_agent_dims = input0_dims.d[3];
+
+    const auto input2 = network->getInput(2);
+    const auto input2_dims = input2->getDimensions();
+    const auto num_polylines = input2_dims.d[1];
+    const auto num_points = input2_dims.d[2];
+    const auto num_polyline_dims = input2_dims.d[3];
+
+    const auto & batch_target = build_config_->batch_target;
+    const auto & batch_agent = build_config_->batch_agent;
     {  // trajectory
       auto name = network->getInput(0)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims4{batch_config_.at(0), num_agents, num_past_frames, num_agent_dims});
+        nvinfer1::Dims4{batch_target.k_min, batch_agent.k_min, num_past_frames, num_agent_dims});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims4{batch_config_.at(1), num_agents, num_past_frames, num_agent_dims});
+        nvinfer1::Dims4{batch_target.k_opt, batch_agent.k_opt, num_past_frames, num_agent_dims});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims4{batch_config_.at(2), num_agents, num_past_frames, num_agent_dims});
+        nvinfer1::Dims4{batch_target.k_max, batch_agent.k_max, num_past_frames, num_agent_dims});
     }
     {  // trajectory mask
       auto name = network->getInput(1)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims3{batch_config_.at(0), num_agents, num_past_frames});
+        nvinfer1::Dims3{batch_target.k_min, batch_agent.k_min, num_past_frames});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims3{batch_config_.at(1), num_agents, num_past_frames});
+        nvinfer1::Dims3{batch_target.k_opt, batch_agent.k_opt, num_past_frames});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims3{batch_config_.at(2), num_agents, num_past_frames});
+        nvinfer1::Dims3{batch_target.k_max, batch_agent.k_max, num_past_frames});
     }
     {  // polyline
       auto name = network->getInput(2)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims4{batch_config_.at(0), num_polylines, num_points, num_polyline_dims});
+        nvinfer1::Dims4{batch_target.k_min, num_polylines, num_points, num_polyline_dims});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims4{batch_config_.at(1), num_polylines, num_points, num_polyline_dims});
+        nvinfer1::Dims4{batch_target.k_opt, num_polylines, num_points, num_polyline_dims});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims4{batch_config_.at(2), num_polylines, num_points, num_polyline_dims});
+        nvinfer1::Dims4{batch_target.k_max, num_polylines, num_points, num_polyline_dims});
     }
     {  // polyline mask
       auto name = network->getInput(3)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims3{batch_config_.at(0), num_polylines, num_points});
+        nvinfer1::Dims3{batch_target.k_min, num_polylines, num_points});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims3{batch_config_.at(1), num_polylines, num_points});
+        nvinfer1::Dims3{batch_target.k_opt, num_polylines, num_points});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims3{batch_config_.at(2), num_polylines, num_points});
+        nvinfer1::Dims3{batch_target.k_max, num_polylines, num_points});
     }
     {  // polyline center
       auto name = network->getInput(4)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims3{batch_config_.at(0), num_polylines, 3});
+        nvinfer1::Dims3{batch_target.k_min, num_polylines, 3});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims3{batch_config_.at(1), num_polylines, 3});
+        nvinfer1::Dims3{batch_target.k_opt, num_polylines, 3});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims3{batch_config_.at(2), num_polylines, 3});
+        nvinfer1::Dims3{batch_target.k_max, num_polylines, 3});
     }
     {  // last pos
       auto name = network->getInput(5)->getName();
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims3{batch_config_.at(0), num_agents, 3});
+        nvinfer1::Dims3{batch_target.k_min, batch_agent.k_min, 3});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims3{batch_config_.at(1), num_agents, 3});
+        nvinfer1::Dims3{batch_target.k_opt, batch_agent.k_opt, 3});
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims3{batch_config_.at(2), num_agents, 3});
+        nvinfer1::Dims3{batch_target.k_max, batch_agent.k_max, 3});
     }
     {  // track index
       auto name = network->getInput(6)->getName();
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims{batch_config_.at(0)});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims{batch_config_.at(1)});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims{batch_config_.at(2)});
+      nvinfer1::Dims minDim, optDim, maxDim;
+      minDim.nbDims = 1;
+      minDim.d[0] = batch_target.k_min;
+      profile->setDimensions(name, nvinfer1::OptProfileSelector::kMIN, minDim);
+      optDim.nbDims = 1;
+      optDim.d[0] = batch_target.k_opt;
+      profile->setDimensions(name, nvinfer1::OptProfileSelector::kOPT, optDim);
+      maxDim.nbDims = 1;
+      maxDim.d[0] = batch_target.k_max;
+      profile->setDimensions(name, nvinfer1::OptProfileSelector::kMAX, maxDim);
     }
     {
       // intention points
       auto name = network->getInput(7)->getName();
       profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims3{batch_config_.at(0), 64, 2});
+        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims3{batch_target.k_min, 64, 2});
       profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims3{batch_config_.at(1), 64, 2});
+        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims3{batch_target.k_opt, 64, 2});
       profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims3{batch_config_.at(2), 64, 2});
+        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims3{batch_target.k_max, 64, 2});
     }
-    {  // pred scores
-      auto name = network->getOutput(0)->getName();
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims2{batch_config_.at(0), 6});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims2{batch_config_.at(1), 6});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims2{batch_config_.at(2), 6});
-    }
-    {  // pred trajs
-      auto name = network->getOutput(1)->getName();
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims4{batch_config_.at(0), 6, 80, 7});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims4{batch_config_.at(1), 6, 80, 7});
-      profile->setDimensions(
-        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims4{batch_config_.at(2), 6, 80, 7});
-    }
+    // {  // pred scores
+    //   auto name = network->getOutput(0)->getName();
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims2{batch_target.k_min, 6});
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims2{batch_target.k_opt, 6});
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims2{batch_target.k_max, 6});
+    // }
+    // {  // pred trajs
+    //   auto name = network->getOutput(1)->getName();
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims4{batch_target.k_min, 6, 80, 7});
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims4{batch_target.k_opt, 6, 80, 7});
+    //   profile->setDimensions(
+    //     name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims4{batch_target.k_max, 6, 80, 7});
+    // }
     config->addOptimizationProfile(profile);
   }
 
-  if (build_config_->is_dynamic) {
+  if (isDynamic()) {
 #if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8200
     config->setProfilingVerbosity(nvinfer1::ProfilingVerbosity::kDETAILED);
 #else
@@ -337,7 +328,7 @@ bool MTRBuilder::buildEngineFromOnnx(
 #endif
   }
 
-#if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8000
+#if NV_TENSORRT_MAJOR >= 8
   auto plan =
     TrtUniquePtr<nvinfer1::IHostMemory>(builder->buildSerializedNetwork(*network, *config));
   if (!plan) {
@@ -356,7 +347,7 @@ bool MTRBuilder::buildEngineFromOnnx(
   }
 
 // save engine
-#if TENSORRT_VERSION_MAJOR < 8
+#if NV_TENSORRT_MAJOR < 8
   auto data = TrtUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
 #endif
   std::ofstream file;
@@ -364,7 +355,7 @@ bool MTRBuilder::buildEngineFromOnnx(
   if (!file.is_open()) {
     return false;
   }
-#if TENSORRT_VERSION_MAJOR < 8
+#if NV_TENSORRT_MAJOR < 8
   file.write(reinterpret_cast<const char *>(data->data()), data->size());
 #else
   file.write(reinterpret_cast<const char *>(plan->data()), plan->size());
@@ -382,12 +373,12 @@ bool MTRBuilder::isInitialized() const
 
 bool MTRBuilder::isDynamic() const
 {
-  return build_config_->is_dynamic;
+  return build_config_->is_dynamic();
 }
 
 bool MTRBuilder::setBindingDimensions(int32_t index, nvinfer1::Dims dimensions)
 {
-  if (build_config_->is_dynamic) {
+  if (isDynamic()) {
     return context_->setBindingDimensions(index, dimensions);
   } else {
     return true;

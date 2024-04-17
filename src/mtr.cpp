@@ -22,12 +22,11 @@ namespace mtr
 {
 TrtMTR::TrtMTR(
   const std::string & model_path, const MTRConfig & config, const BuildConfig & build_config,
-  const BatchConfig & batch_config, const size_t max_workspace_size)
+  const size_t max_workspace_size)
 : config_(config),
   intention_point_(config_.intention_point_filepath, config_.num_intention_point_cluster)
 {
-  builder_ =
-    std::make_unique<MTRBuilder>(model_path, build_config, batch_config, max_workspace_size);
+  builder_ = std::make_unique<MTRBuilder>(model_path, build_config, max_workspace_size);
   builder_->setup();
 
   if (!builder_->isInitialized()) {
@@ -111,15 +110,15 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     // TODO(ktro2828): refactor
     // obj_trajs
     builder_->setBindingDimensions(
-      0, nvinfer1::Dims4{agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, inDim});
+      0, nvinfer1::Dims4{
+           agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, inAgentDim});
     // obj_trajs_mask
     builder_->setBindingDimensions(
       1, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength});
     // polylines
     builder_->setBindingDimensions(
       2, nvinfer1::Dims4{
-           agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum,
-           polyline_data.StateDim + 2});
+           agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum, inPointDim});
     // polyline mask
     builder_->setBindingDimensions(
       3, nvinfer1::Dims3{agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum});
@@ -130,7 +129,10 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     builder_->setBindingDimensions(
       5, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, 3});
     // track index to predict
-    builder_->setBindingDimensions(6, nvinfer1::Dims{agent_data.TargetNum});
+    nvinfer1::Dims targetIdxDim;
+    targetIdxDim.nbDims = 1;
+    targetIdxDim.d[0] = agent_data.TargetNum;
+    builder_->setBindingDimensions(6, targetIdxDim);
     // intention points
     builder_->setBindingDimensions(
       7, nvinfer1::Dims3{agent_data.TargetNum, config_.num_intention_point_cluster, 2});
