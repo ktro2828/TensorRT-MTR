@@ -98,28 +98,39 @@ __global__ void setPreviousPositionKernel(
 __global__ void extractTopkKernel(
   const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
   const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
-  float * outPolyline)
+  int * topkIndex, float * outPolyline)
 {
-  // --- pseudo code ---
-  // mask = All(polyline != 0.0, dim=2)
-  // polylineCenter = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
-  // offset = rotateAlongZ((offset_x, offset_y), target_state[:, 6])
-  // targetOffsetPos = target_state[:, 0:2] + offset
-  // distances = (target_offset_pos - center)
-  // _, topkIdxs = distances.topk(k=K, descending=True)
-  // outPolyline = inPolyline[topkIdxs]
-  // -------------------
+  int l = blockIdx.x * blockDim.x + threadIdx.x;
+  int b = blockIdx.y * blockDim.y + threadIdx.y;
+  if (l >= L || b >= B) {
+    return;
+  }
 
-  // int targetIdx = blockIdx.x;
+  // calculate polyline center
+  float sumX = 0.0f, sumY = 0.0f;
+  int validPoints = 0;
+  for (int p = 0; p < P; ++p) {
+    float x = inPolyline[(l * P + p) * PointDim];
+    float y = inPolyline[(l * P + p) * PointDim + 1];
+    if (x != 0.0f || y != 0.0f) {
+      sumX += x;
+      sumY += y;
+      ++validPoints;
+    }
+  }
+  float centerX = sumX / fmaxf(1.0f, validPoints);
+  float centerY = sumY / fmaxf(1.0f, validPoints);
 
-  // const float targetX = targetState[targetIdx];
-  // const float targetY = targetState[targetIdx + 1];
-  // const float targetYaw = targetState[targetIdx + 6];
-  // const float targetCos = cos(targetYaw);
-  // const float targetSin = sin(targetYaw);
+  // apply offset to target state
+  float yaw = targetState[b * AgentDim + 6];
+  float cosYaw = cosf(yaw);
+  float sinYaw = sinf(yaw);
+  float transOffsetX = offsetX * cosYaw - offsetY * sinYaw;
+  float transOffsetY = offsetX * sinYaw + offsetY * cosYaw;
+  float targetX = targetState[b * AgentDim] + transOffsetX;
+  float targetY = targetState[b * AgentDim + 1] + transOffsetY;
 
-  // const float transTargetX = targetCos * offsetX + targetSin * offsetY + targetX;
-  // const float transTargetY = -targetSin * offsetX + targetCos * offsetY + targetY;
+  float distance = sqrtf(powf(targetX - centerX, 2) + powf(targetY - centerY, 2));
 }
 
 __global__ void calculatePolylineCenterKernel(
