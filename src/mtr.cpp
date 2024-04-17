@@ -21,14 +21,13 @@
 namespace mtr
 {
 TrtMTR::TrtMTR(
-  const std::string & model_path, const std::string & precision, const MTRConfig & config,
-  const BatchConfig & batch_config, const size_t max_workspace_size,
-  const BuildConfig & build_config)
+  const std::string & model_path, const MTRConfig & config, const BuildConfig & build_config,
+  const BatchConfig & batch_config, const size_t max_workspace_size)
 : config_(config),
   intention_point_(config_.intention_point_filepath, config_.num_intention_point_cluster)
 {
-  builder_ = std::make_unique<MTRBuilder>(
-    model_path, precision, batch_config, max_workspace_size, build_config);
+  builder_ =
+    std::make_unique<MTRBuilder>(model_path, build_config, batch_config, max_workspace_size);
   builder_->setup();
 
   if (!builder_->isInitialized()) {
@@ -106,6 +105,35 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     d_tmp_polyline_mask_ = cuda::make_unique<bool[]>(
       agent_data.TargetNum * polyline_data.PolylineNum * polyline_data.PointNum);
     d_tmp_distance_ = cuda::make_unique<float[]>(agent_data.TargetNum * polyline_data.PolylineNum);
+  }
+
+  if (builder_->isDynamic()) {
+    // TODO(ktro2828): refactor
+    // obj_trajs
+    builder_->setBindingDimensions(
+      0, nvinfer1::Dims4{agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, inDim});
+    // obj_trajs_mask
+    builder_->setBindingDimensions(
+      1, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength});
+    // polylines
+    builder_->setBindingDimensions(
+      2, nvinfer1::Dims4{
+           agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum,
+           polyline_data.StateDim + 2});
+    // polyline mask
+    builder_->setBindingDimensions(
+      3, nvinfer1::Dims3{agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum});
+    // polyline center
+    builder_->setBindingDimensions(
+      4, nvinfer1::Dims3{agent_data.TargetNum, config_.max_num_polyline, 3});
+    // obj last pos
+    builder_->setBindingDimensions(
+      5, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, 3});
+    // track index to predict
+    builder_->setBindingDimensions(6, nvinfer1::Dims{agent_data.TargetNum});
+    // intention points
+    builder_->setBindingDimensions(
+      7, nvinfer1::Dims3{agent_data.TargetNum, config_.num_intention_point_cluster, 2});
   }
 
   // outputs

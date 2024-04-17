@@ -136,7 +136,7 @@ int main(int argc, char ** argv)
   assert(("The number of repeats must be integer > 0", num_repeat > 0));
 
   mtr::Debugger debugger;
-  auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
+  auto model = std::make_unique<mtr::TrtMTR>(model_path);
 
   debugger.createEvent();
   auto config = model->config();

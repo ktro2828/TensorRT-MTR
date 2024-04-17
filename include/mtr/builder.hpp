@@ -52,74 +52,40 @@ template <typename T>
 using TrtUniquePtr = std::unique_ptr<T, TrtDeleter<T>>;
 using BatchConfig = std::array<int32_t, 3>;
 
+enum PrecisionType { FP32 = 0, FP16 = 1, INT8 = 2 };
+enum CalibrationType { ENTROPY = 0, LEGACY = 1, PERCENTILE = 2, MINMAX = 3 };
+
 struct BuildConfig
 {
+  // type of precision
+  PrecisionType precision;
+
   // type for calibration
-  std::string calib_type_str;
+  CalibrationType calibration;
 
-  // DLA core ID that the process uses
-  int dla_core_id;
-
-  // flag for partial quantization in first layer
-  bool quantize_first_layer;  // For partial quantization
-
-  // flag for partial quantization in last layer
-  bool quantize_last_layer;  // For partial quantization
-
-  // flag for per-layer profiler using IProfiler
-  bool profile_per_layer;
-
-  // clip value for implicit quantization
-  double clip_value;  // For implicit quantization
-
-  // Supported calibration type
-  const std::array<std::string, 4> valid_calib_type = {"Entropy", "Legacy", "Percentile", "MinMax"};
+  // flag of dynamic shape
+  bool is_dynamic;
 
   /**
    * @brief Construct a new instance with default configurations.
-   *
    */
-  BuildConfig()
-  : calib_type_str("MinMax"),
-    dla_core_id(-1),
-    quantize_first_layer(false),
-    quantize_last_layer(false),
-    profile_per_layer(false),
-    clip_value(0.0)
+  BuildConfig(const bool is_dynamic = false)
+  : precision(PrecisionType::FP32), calibration(CalibrationType::MINMAX), is_dynamic(is_dynamic)
   {
   }
 
   /**
-   * @brief Construct a new instance with custom configurations.
+   * @brief Construct a new build config.
    *
-   * @param calib_type_str The name of calibration type which must be selected from [Entropy,
-   * MinMax].
-   * @param dla_core_id DLA core ID used by the process.
-   * @param quantize_first_layer The flag whether to quantize first layer.
-   * @param quantize_last_layer The flag whether to quantize last layer.
-   * @param profile_per_layer The flag to profile per-layer in IProfiler.
-   * @param clip_value The value to be clipped in quantization implicitly.
+   * @param precision
+   * @param calibration
+   * @param is_dynamic
    */
-  explicit BuildConfig(
-    const std::string & calib_type_str, const int dla_core_id = -1,
-    const bool quantize_first_layer = false, const bool quantize_last_layer = false,
-    const bool profile_per_layer = false, const double clip_value = 0.0)
-  : calib_type_str(calib_type_str),
-    dla_core_id(dla_core_id),
-    quantize_first_layer(quantize_first_layer),
-    quantize_last_layer(quantize_last_layer),
-    profile_per_layer(profile_per_layer),
-    clip_value(clip_value)
+  BuildConfig(
+    const PrecisionType & precision, const CalibrationType & calibration,
+    const bool is_dynamic = false)
+  : precision(precision), calibration(calibration), is_dynamic(is_dynamic)
   {
-    if (
-      std::find(valid_calib_type.begin(), valid_calib_type.end(), calib_type_str) ==
-      valid_calib_type.end()) {
-      std::stringstream message;
-      message << "Invalid calibration type was specified: " << calib_type_str << std::endl
-              << "Valid value is one of: [Entropy, (Legacy | Percentile), MinMax]" << std::endl
-              << "Default calibration type will be used: MinMax" << std::endl;
-      std::cerr << message.str();
-    }
   }
 };  // struct BuildConfig
 
@@ -130,15 +96,13 @@ public:
    * @brief Construct a new instance.
    *
    * @param model_path Path to engine or onnx file.
-   * @param precision The name of precision type.
+   * @param build_config The configuration of build.
    * @param batch_config The configuration of min/opt/max batch.
    * @param max_workspace_size The max workspace size.
-   * @param build_config The configuration of build.
    */
   MTRBuilder(
-    const std::string & model_path, const std::string & precision,
-    const BatchConfig & batch_config = {1, 1, 1}, const size_t max_workspace_size = (1ULL << 30),
-    const BuildConfig & build_config = BuildConfig());
+    const std::string & model_path, const BuildConfig & build_config = BuildConfig(),
+    const BatchConfig & batch_config = {1, 1, 1}, const size_t max_workspace_size = (1ULL << 30));
 
   /**
    * @brief Destroy the instance.
@@ -157,6 +121,10 @@ public:
    * @return True if plugins were initialized successfully.
    */
   bool isInitialized() const;
+
+  bool isDynamic() const;
+
+  bool setBindingDimensions(int32_t index, nvinfer1::Dims dimensions);
 
   /**
    * @brief A wrapper of `nvinfer1::IExecuteContext::enqueueV2`.
@@ -179,6 +147,13 @@ private:
   bool loadEngine(const std::string & filepath);
 
   /**
+   * @brief Create a cache path of engine file.
+   *
+   * @return fs::path
+   */
+  fs::path createEngineCachePath() const;
+
+  /**
    * @brief Build engine from onnx file.
    *
    * @param filepath Onnx file path.
@@ -194,7 +169,6 @@ private:
   TrtUniquePtr<nvinfer1::IExecutionContext> context_;
 
   fs::path model_filepath_;
-  std::string precision_;
   BatchConfig batch_config_;
   size_t max_workspace_size_;
   std::unique_ptr<const BuildConfig> build_config_;

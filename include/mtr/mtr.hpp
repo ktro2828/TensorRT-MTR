@@ -90,17 +90,15 @@ public:
    * @brief Construct a new instance.
    *
    * @param model_path The path to engine or onnx file.
-   * @param precision The precision type.
    * @param config The configuration of model.
+   * @param build_config The configuration of build.
    * @param batch_config The configuration of batch.
    * @param max_workspace_size The max size of workspace.
-   * @param build_config The configuration of build.
    */
   TrtMTR(
-    const std::string & model_path, const std::string & precision,
-    const MTRConfig & config = MTRConfig(), const BatchConfig & batch_config = {1, 1, 1},
-    const size_t max_workspace_size = (1ULL << 30),
-    const BuildConfig & build_config = BuildConfig());
+    const std::string & model_path, const MTRConfig & config = MTRConfig(),
+    const BuildConfig & build_config = BuildConfig(true),
+    const BatchConfig & batch_config = {1, 1, 1}, const size_t max_workspace_size = (1ULL << 30));
 
   /**
    * @brief Execute inference.
