@@ -85,20 +85,28 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     polyline_data.PolylineNum * polyline_data.PointNum * polyline_data.StateDim);
 
   // preprocessed input
-  const size_t inDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength +
-                       3;  // TODO: define this in global
+  const size_t inAgentDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength +
+                            3;  // TODO: define this in global
+  const size_t inPointDim = polyline_data.StateDim + 2;
   d_in_trajectory_ = cuda::make_unique<float[]>(
-    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim);
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inAgentDim);
   d_in_trajectory_mask_ =
     cuda::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   d_in_last_pos_ = cuda::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
   d_in_polyline_ = cuda::make_unique<float[]>(
-    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
-    (polyline_data.StateDim + 2));
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum * inPointDim);
   d_in_polyline_mask_ = cuda::make_unique<bool[]>(
     agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum);
   d_in_polyline_center_ =
     cuda::make_unique<float[]>(agent_data.TargetNum * config_.max_num_polyline * 3);
+
+  if (config_.max_num_polyline < polyline_data.PolylineNum) {
+    d_tmp_polyline_ = cuda::make_unique<float[]>(
+      agent_data.TargetNum * polyline_data.PolylineNum * polyline_data.PointNum * inPointDim);
+    d_tmp_polyline_mask_ = cuda::make_unique<bool[]>(
+      agent_data.TargetNum * polyline_data.PolylineNum * polyline_data.PointNum);
+    d_tmp_distance_ = cuda::make_unique<float[]>(agent_data.TargetNum * polyline_data.PolylineNum);
+  }
 
   // outputs
   d_out_score_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
@@ -110,13 +118,12 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
 
   // debug
   h_debug_in_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inDim);
+    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inAgentDim);
   h_debug_in_trajectory_mask_ =
     std::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
   h_debug_in_last_pos_ = std::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
   h_debug_in_polyline_ = std::make_unique<float[]>(
-    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
-    (polyline_data.StateDim + 2));
+    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum * inPointDim);
   h_debug_in_polyline_mask_ = std::make_unique<bool[]>(
     agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum);
   h_debug_in_polyline_center_ =
@@ -171,7 +178,8 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
     CHECK_CUDA_ERROR(polylinePreprocessWithTopkLauncher(
       config_.max_num_polyline, polyline_data.PolylineNum, polyline_data.PointNum,
       polyline_data.StateDim, d_polyline_.get(), agent_data.TargetNum, agent_data.StateDim,
-      d_target_state_.get(), d_in_polyline_.get(), d_in_polyline_mask_.get(),
+      d_target_state_.get(), d_tmp_polyline_.get(), d_tmp_polyline_mask_.get(),
+      d_tmp_distance_.get(), d_in_polyline_.get(), d_in_polyline_mask_.get(),
       d_in_polyline_center_.get(), stream_));
   } else {
     assert(
