@@ -169,7 +169,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   if (config_.max_num_polyline < polyline_data.PolylineNum) {
     CHECK_CUDA_ERROR(polylinePreprocessWithTopkLauncher(
-      polyline_data.PolylineNum, config_.max_num_polyline, polyline_data.PointNum,
+      config_.max_num_polyline, polyline_data.PolylineNum, polyline_data.PointNum,
       polyline_data.StateDim, d_polyline_.get(), agent_data.TargetNum, agent_data.StateDim,
       d_target_state_.get(), d_in_polyline_.get(), d_in_polyline_mask_.get(),
       d_in_polyline_center_.get(), stream_));
