@@ -32,8 +32,17 @@ mtr::AgentData load_agent_data()
   constexpr int D = 12;
   constexpr int sdc_index = 1;
 
-  std::vector<int> target_index{0, 1, 2};
   std::vector<float> timestamps{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
+
+  std::vector<int> target_index;
+  for (int n = 0; n < N; ++n) {
+    if (n != sdc_index) {
+      target_index.emplace_back(n);
+    }
+    if (target_index.size() == B) {
+      break;
+    }
+  }
 
   std::vector<int> label_index;
   float trajectory[N][T][D];
@@ -74,7 +83,7 @@ mtr::AgentData load_agent_data()
 
 mtr::PolylineData load_polyline_data(const int K)
 {
-  constexpr int N = 1000;
+  constexpr int N = 2500;
   constexpr int P = 20;
   constexpr int D = 7;
 

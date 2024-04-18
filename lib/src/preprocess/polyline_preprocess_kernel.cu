@@ -133,12 +133,15 @@ __global__ void extractTopKPolylineKernel(
   bool * outPolylineMask)
 {
   int b = blockIdx.x;                             // Batch index
+  int tid = threadIdx.x;                          // Polyline index
   int p = blockIdx.y * blockDim.y + threadIdx.y;  // Point index
   int d = blockIdx.z * blockDim.z + threadIdx.z;  // Dim index
+  if (b >= B || tid >= L || p >= P || d >= D) {
+    return;
+  }
   extern __shared__ float distances[];
 
   // Load distances into shared memory
-  int tid = threadIdx.x;  // Polyline index
   if (tid < L) {
     distances[tid] = inDistance[b * L + tid];
   }
@@ -157,6 +160,10 @@ __global__ void extractTopKPolylineKernel(
       }
     }
     __syncthreads();
+
+    if (minIndex == -1) {
+      continue;
+    }
 
     if (tid == k) {  // this thread will handle copying the k-th smallest polyline
       int inIdx = b * L * P + minIndex * P + p;
@@ -215,6 +222,7 @@ cudaError_t polylinePreprocessWithTopkLauncher(
 
   const int outPointDim = PointDim + 2;
 
+  // TODO: do not allocate here
   float *tmpPolyline, *tmpDistance;
   bool * tmpPolylineMask;
   CHECK_CUDA_ERROR(cudaMallocAsync(&tmpPolyline, sizeof(float) * B * L * P * outPointDim, stream));
@@ -245,6 +253,7 @@ cudaError_t polylinePreprocessWithTopkLauncher(
   calculatePolylineCenterKernel<<<blocks5, threadsPerBlock, 0, stream>>>(
     B, K, P, outPointDim, outPolyline, outPolylineMask, outPolylineCenter);
 
+  cudaStreamSynchronize(stream);  // Synchronize stream before free temporal memories
   CHECK_CUDA_ERROR(cudaFree(tmpPolyline));
   CHECK_CUDA_ERROR(cudaFree(tmpPolylineMask));
   CHECK_CUDA_ERROR(cudaFree(tmpDistance));
