@@ -172,6 +172,10 @@ private:
   cuda::unique_ptr<float[]> d_in_polyline_{nullptr};
   cuda::unique_ptr<bool[]> d_in_polyline_mask_{nullptr};
   cuda::unique_ptr<float[]> d_in_polyline_center_{nullptr};
+  // only used for topk extraction
+  cuda::unique_ptr<float[]> d_tmp_polyline_{nullptr};
+  cuda::unique_ptr<bool[]> d_tmp_polyline_mask_{nullptr};
+  cuda::unique_ptr<float[]> d_tmp_distance_{nullptr};
 
   // outputs
   cuda::unique_ptr<float[]> d_out_score_{nullptr};

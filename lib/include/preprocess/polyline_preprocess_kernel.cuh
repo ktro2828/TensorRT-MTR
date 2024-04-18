@@ -119,6 +119,11 @@ __global__ void calculatePolylineCenterKernel(
  * @param B The number of target agents.
  * @param AgentDim The number of agent state dimensions.
  * @param targetState Target agent state at the latest timestamp, in shape [B*AgentDim].
+ * @param tmpPolyline A container to store transformed polyline temporary, in shape
+ * [B*L*P*(PointDim+2)].
+ * @param tmpPolylineMask A container to store transformed polyline mask temporary, in shape
+ * [B*L*P].
+ * @param tmpDistance A container to store distances temporary, in shape [B*L].
  * @param outPolyline Output polylines, in shape [B*K*P*(PointDim+2)].
  * @param outPolylineMask Output polyline masks, in shape [B*K*P].
  * @param outPolylineCenter Output magnitudes of each polyline with respect to target coords,
@@ -128,8 +133,9 @@ __global__ void calculatePolylineCenterKernel(
  */
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int K, const int L, const int P, const int PointDim, const float * inPolyline, const int B,
-  const int AgentDim, const float * targetState, float * outPolyline, bool * outPolylineMask,
-  float * outPolylineCenter, cudaStream_t stream);
+  const int AgentDim, const float * targetState, float * tmpPolyline, bool * tmpPolylineMask,
+  float * tmpDistance, float * outPolyline, bool * outPolylineMask, float * outPolylineCenter,
+  cudaStream_t stream);
 
 /**
  * @brief Do preprocess for polyline if the number of batched polylines is K.

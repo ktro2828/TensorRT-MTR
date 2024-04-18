@@ -212,8 +212,9 @@ __global__ void calculatePolylineCenterKernel(
 
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int K, const int L, const int P, const int PointDim, const float * inPolyline, const int B,
-  const int AgentDim, const float * targetState, float * outPolyline, bool * outPolylineMask,
-  float * outPolylineCenter, cudaStream_t stream)
+  const int AgentDim, const float * targetState, float * tmpPolyline, bool * tmpPolylineMask,
+  float * tmpDistance, float * outPolyline, bool * outPolylineMask, float * outPolylineCenter,
+  cudaStream_t stream)
 {
   if (L < K) {
     std::cerr << "L must be greater than K, but got L: " << L << ", K: " << K << std::endl;
@@ -221,13 +222,6 @@ cudaError_t polylinePreprocessWithTopkLauncher(
   }
 
   const int outPointDim = PointDim + 2;
-
-  // TODO: do not allocate here
-  float *tmpPolyline, *tmpDistance;
-  bool * tmpPolylineMask;
-  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpPolyline, sizeof(float) * B * L * P * outPointDim, stream));
-  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpPolylineMask, sizeof(bool) * B * L * P, stream));
-  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpDistance, sizeof(float) * B * L, stream));
 
   // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
   constexpr int threadsPerBlock = 256;
@@ -252,11 +246,6 @@ cudaError_t polylinePreprocessWithTopkLauncher(
   const dim3 blocks5(B, K);
   calculatePolylineCenterKernel<<<blocks5, threadsPerBlock, 0, stream>>>(
     B, K, P, outPointDim, outPolyline, outPolylineMask, outPolylineCenter);
-
-  cudaStreamSynchronize(stream);  // Synchronize stream before free temporal memories
-  CHECK_CUDA_ERROR(cudaFree(tmpPolyline));
-  CHECK_CUDA_ERROR(cudaFree(tmpPolylineMask));
-  CHECK_CUDA_ERROR(cudaFree(tmpDistance));
 
   return cudaGetLastError();
 }
