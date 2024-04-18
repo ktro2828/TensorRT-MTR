@@ -63,6 +63,7 @@ target_link_libraries(custom_kernel
   ${CUDNN_LIBRARIES})
 target_include_directories(custom_kernel PUBLIC
   lib/include
+  ${PROJECT_SOURCE_DIR}/include
 )
 
 # MTR

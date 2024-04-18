@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mtr/cuda_helper.hpp"
 #include "preprocess/polyline_preprocess_kernel.cuh"
+
+#include <float.h>
 
 #include <iostream>
 
@@ -62,11 +65,13 @@ __global__ void transformPolylineKernel(
   out_polyline[out_idx + 5] = trans_dz;
   out_polyline[out_idx + 6] = type_id;
 
-  const int out_mask_idx = b * K * P + k * P + p;
   bool is_valid = false;
-  for (size_t i = 0; i < 6; ++i) {
-    is_valid += out_polyline[out_idx + i] != 0.0f;
+  for (size_t i = 0; i < PointDim - 1; ++i) {
+    if (out_polyline[out_idx + i] != 0.0f) {
+      is_valid = true;
+    }
   }
+  int out_mask_idx = b * K * P + k * P + p;
   out_polyline_mask[out_mask_idx] = is_valid;
 }
 
@@ -95,31 +100,74 @@ __global__ void setPreviousPositionKernel(
   }
 }
 
-__global__ void extractTopkKernel(
-  const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
-  const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
-  float * outPolyline)
+__global__ void calculateCenterDistanceKernel(
+  const int B, const int L, const int P, const int AgentDim, const float * targetState,
+  const int PointDim, const float * inPolyline, const bool * inPolylineMask, float * outDistance)
 {
-  // --- pseudo code ---
-  // mask = All(polyline != 0.0, dim=2)
-  // polylineCenter = polyline[:, :, 0:2].sum(dim=1) / clampMin(mask.sum(dim=1), min=1.0)
-  // offset = rotateAlongZ((offset_x, offset_y), target_state[:, 6])
-  // targetOffsetPos = target_state[:, 0:2] + offset
-  // distances = (target_offset_pos - center)
-  // _, topkIdxs = distances.topk(k=K, descending=True)
-  // outPolyline = inPolyline[topkIdxs]
-  // -------------------
+  int b = blockIdx.x * blockDim.x + threadIdx.x;
+  int l = blockIdx.y * blockDim.y + threadIdx.y;
+  if (b >= B || l >= L) {
+    return;
+  }
 
-  // int targetIdx = blockIdx.x;
+  // calculate polyline center
+  float sumX = 0.0f, sumY = 0.0f;
+  int numValid = 0;
+  for (int p = 0; p < P; ++p) {
+    int idx = b * L * P + l * P + p;
+    float x = inPolyline[idx * PointDim];
+    float y = inPolyline[idx * PointDim + 1];
+    if (inPolylineMask[idx]) {
+      sumX += x;
+      sumY += y;
+      ++numValid;
+    }
+  }
+  float centerX = sumX / fmaxf(1.0f, numValid);
+  float centerY = sumY / fmaxf(1.0f, numValid);
 
-  // const float targetX = targetState[targetIdx];
-  // const float targetY = targetState[targetIdx + 1];
-  // const float targetYaw = targetState[targetIdx + 6];
-  // const float targetCos = cos(targetYaw);
-  // const float targetSin = sin(targetYaw);
+  outDistance[b * L + l] = sqrtf(powf(centerX, 2) + powf(centerY, 2));
+}
 
-  // const float transTargetX = targetCos * offsetX + targetSin * offsetY + targetX;
-  // const float transTargetY = -targetSin * offsetX + targetCos * offsetY + targetY;
+__global__ void extractTopKPolylineKernel(
+  const int K, const int B, const int L, const int P, const int D, const float * inPolyline,
+  const bool * inPolylineMask, const float * inDistance, float * outPolyline,
+  bool * outPolylineMask)
+{
+  int b = blockIdx.x;  // Batch index
+  extern __shared__ float distances[];
+
+  // Load distances into shared memory
+  int tid = threadIdx.x;
+  if (tid < L) {
+    distances[tid] = inDistance[b * L + tid];
+  }
+  __syncthreads();
+
+  // Simple selection of the smallest K distances
+  // (this part should be replaced with a more efficient sorting/selecting algorithm)
+  for (int k = 0; k < K; k++) {
+    float minDistance = FLT_MAX;
+    int minIndex = -1;
+
+    for (int l = 0; l < L; l++) {
+      if (distances[l] < minDistance) {
+        minDistance = distances[l];
+        minIndex = l;
+      }
+    }
+
+    if (tid == k) {  // this thread will handle copying the k-th smallest polyline
+      for (int p = 0; p < P; p++) {
+        for (int d = 0; d < D; d++) {
+          outPolyline[b * K * P * D + k * P * D + p * D + d] =
+            inPolyline[b * L * P * D + minIndex * P * D + p * D + d];
+        }
+        outPolylineMask[b * K * P + k * P + p] = inPolylineMask[b * L * P + minIndex * P + p];
+      }
+    }
+    distances[minIndex] = FLT_MAX;  // exclude this index from future consideration
+  }
 }
 
 __global__ void calculatePolylineCenterKernel(
@@ -164,14 +212,46 @@ __global__ void calculatePolylineCenterKernel(
 
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int L, const int K, const int P, const int PointDim, const float * in_polyline, const int B,
-  const int AgentDim, const float * target_state, const float offset_x, const float offset_y,
-  int * topk_index, float * out_polyline, bool * out_polyline_mask, float * out_polyline_center,
-  cudaStream_t stream)
+  const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
+  float * out_polyline_center, cudaStream_t stream)
 {
   if (L < K) {
     std::cerr << "L must be greater than K, but got L: " << L << ", K: " << K << std::endl;
     return cudaError_t::cudaErrorInvalidValue;
   }
+
+  float *tmpPolyline, *tmpDistance;
+  bool * tmpPolylineMask;
+  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpPolyline, sizeof(float) * B * L * P * PointDim, stream));
+  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpPolylineMask, sizeof(bool) * B * L * P, stream));
+  CHECK_CUDA_ERROR(cudaMallocAsync(&tmpDistance, sizeof(float) * B * L, stream));
+
+  // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
+  constexpr int threadsPerBlock = 256;
+  const dim3 block3dl(B, L / threadsPerBlock, P);
+  transformPolylineKernel<<<block3dl, threadsPerBlock, 0, stream>>>(
+    L, P, PointDim, in_polyline, B, AgentDim, target_state, tmpPolyline, tmpPolylineMask);
+
+  const dim3 block2dl(B, L / threadsPerBlock);
+  calculateCenterDistanceKernel<<<block2dl, threadsPerBlock, 0, stream>>>(
+    B, L, P, AgentDim, target_state, PointDim, tmpPolyline, tmpPolylineMask, tmpDistance);
+
+  const size_t sharedMemSize = sizeof(float) * K;
+  extractTopKPolylineKernel<<<B, threadsPerBlock, sharedMemSize, stream>>>(
+    K, B, L, P, PointDim, tmpPolyline, tmpPolylineMask, tmpDistance, out_polyline,
+    out_polyline_mask);
+
+  const dim3 block3dk(B, K / threadsPerBlock, P);
+  setPreviousPositionKernel<<<block3dk, threadsPerBlock, 0, stream>>>(
+    B, K, P, PointDim, out_polyline_mask, out_polyline);
+
+  const dim3 block2dk(B, K / threadsPerBlock);
+  calculatePolylineCenterKernel<<<block2dk, threadsPerBlock, 0, stream>>>(
+    B, K, P, PointDim, out_polyline, out_polyline_mask, out_polyline_center);
+
+  CHECK_CUDA_ERROR(cudaFree(tmpPolyline));
+  CHECK_CUDA_ERROR(cudaFree(tmpPolylineMask));
+  CHECK_CUDA_ERROR(cudaFree(tmpDistance));
 
   return cudaGetLastError();
 }
@@ -183,7 +263,7 @@ cudaError_t polylinePreprocessLauncher(
 {
   // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
   constexpr int threadsPerBlock = 256;
-  const dim3 block3d(B, K / threadsPerBlock, P);
+  const dim3 block3d(B, (K - 1) / threadsPerBlock, P);
 
   transformPolylineKernel<<<block3d, threadsPerBlock, 0, stream>>>(
     K, P, PointDim, in_polyline, B, AgentDim, target_state, out_polyline, out_polyline_mask);
@@ -191,7 +271,7 @@ cudaError_t polylinePreprocessLauncher(
   setPreviousPositionKernel<<<block3d, threadsPerBlock, 0, stream>>>(
     B, K, P, PointDim, out_polyline_mask, out_polyline);
 
-  const dim3 block2d(B, K / threadsPerBlock);
+  const dim3 block2d(B, (K - 1) / threadsPerBlock);
   calculatePolylineCenterKernel<<<block2d, threadsPerBlock, 0, stream>>>(
     B, K, P, PointDim, out_polyline, out_polyline_mask, out_polyline_center);
 

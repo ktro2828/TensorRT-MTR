@@ -52,7 +52,7 @@ struct MTRConfig
     const std::vector<std::string> & target_labels = {"VEHICLE", "PEDESTRIAN", "CYCLIST"},
     const size_t num_past = 10, const size_t num_mode = 6, const size_t num_future = 80,
     const size_t max_num_polyline = 768, const size_t max_num_point = 20,
-    const float point_break_distance = 1.0f, const std::array<float, 2> & offset_xy = {30.0f, 0.0f},
+    const float point_break_distance = 1.0f,
     const std::string & intention_point_filepath = "./data/waymo64.csv",
     const size_t num_intention_point_cluster = 64)
   : target_labels(target_labels),
@@ -63,7 +63,6 @@ struct MTRConfig
     max_num_polyline(max_num_polyline),
     max_num_point(max_num_point),
     point_break_distance(point_break_distance),
-    offset_xy(offset_xy),
     intention_point_filepath(intention_point_filepath),
     num_intention_point_cluster(num_intention_point_cluster)
   {
@@ -77,7 +76,6 @@ struct MTRConfig
   size_t max_num_polyline;
   size_t max_num_point;
   float point_break_distance;
-  std::array<float, 2> offset_xy;
   std::string intention_point_filepath;
   size_t num_intention_point_cluster;
 };  // struct MTRConfig
@@ -166,7 +164,6 @@ private:
   cuda::unique_ptr<float[]> d_target_state_{nullptr};
   cuda::unique_ptr<float[]> d_intention_points_{nullptr};
   cuda::unique_ptr<float[]> d_polyline_{nullptr};
-  cuda::unique_ptr<int[]> d_topk_index_{nullptr};
 
   // preprocessed inputs
   cuda::unique_ptr<float[]> d_in_trajectory_{nullptr};
