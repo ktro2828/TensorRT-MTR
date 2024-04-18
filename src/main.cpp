@@ -32,8 +32,17 @@ mtr::AgentData load_agent_data()
   constexpr int D = 12;
   constexpr int sdc_index = 1;
 
-  std::vector<int> target_index{0, 1, 2};
   std::vector<float> timestamps{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
+
+  std::vector<int> target_index;
+  for (int n = 0; n < N; ++n) {
+    if (n != sdc_index) {
+      target_index.emplace_back(n);
+    }
+    if (target_index.size() == B) {
+      break;
+    }
+  }
 
   std::vector<int> label_index;
   float trajectory[N][T][D];
@@ -74,29 +83,20 @@ mtr::AgentData load_agent_data()
 
 mtr::PolylineData load_polyline_data(const int K)
 {
-  constexpr int N = 10;
-  constexpr int P = 5;
+  constexpr int N = 2500;
+  constexpr int P = 20;
   constexpr int D = 7;
-
-  float src_points[N][D] = {
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
-    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
-  };
 
   std::vector<mtr::LanePoint> points;
   points.reserve(N);
   for (std::size_t n = 0; n < N; ++n) {
-    const std::size_t idx = n * D;
-    auto x = src_points[n][0];
-    auto y = src_points[n][1];
-    auto z = src_points[n][2];
-    auto dx = src_points[n][3];
-    auto dy = src_points[n][4];
-    auto dz = src_points[n][5];
-    auto label = src_points[n][6];
+    float x = 1.0f;
+    float y = 1.0f;
+    auto z = 1.0f;
+    auto dx = 1.0f;
+    auto dy = 1.0f;
+    auto dz = 1.0f;
+    auto label = 1.0f;
     mtr::LanePoint point(x, y, z, dx, dy, dz, label);
     points.emplace_back(point);
   }

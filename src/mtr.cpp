@@ -53,7 +53,7 @@ bool TrtMTR::doInference(
                                 d_in_polyline_.get(),        d_in_polyline_mask_.get(),
                                 d_in_polyline_center_.get(), d_in_last_pos_.get(),
                                 d_target_index_.get(),       d_intention_points_.get(),
-                                d_out_score_.get(),          d_out_trajectory_.get()};
+                                d_out_trajectory_.get(),     d_out_score_.get()};
 
   if (!builder_->enqueueV2(buffer.data(), stream_, nullptr)) {
     std::cerr << "Fail to do inference" << std::endl;
@@ -192,16 +192,10 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
 bool TrtMTR::postProcess(AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories)
 {
-  // DEBUG
-  event_debugger_.createEvent(stream_);
   // Postprocess
   CHECK_CUDA_ERROR(postprocessLauncher(
     agent_data.TargetNum, config_.num_mode, config_.num_future, agent_data.StateDim,
-    d_target_state_.get(), PredictedStateDim, d_out_score_.get(), d_out_trajectory_.get(),
-    stream_));
-  event_debugger_.printElapsedTime(stream_);
-
-  debugPostprocess(agent_data);
+    d_target_state_.get(), PredictedStateDim, d_out_trajectory_.get(), stream_));
 
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_out_score_.get(), d_out_score_.get(), sizeof(float) * agent_data.TargetNum * config_.num_mode,
@@ -212,12 +206,13 @@ bool TrtMTR::postProcess(AgentData & agent_data, std::vector<PredictedTrajectory
       PredictedStateDim,
     cudaMemcpyDeviceToHost, stream_));
 
-  trajectories.clear();
+  // debugPostprocess(agent_data);
+
   trajectories.reserve(agent_data.TargetNum);
   for (size_t b = 0; b < agent_data.TargetNum; ++b) {
     const auto score_ptr = h_out_score_.get() + b * config_.num_mode;
     const auto trajectory_ptr =
-      h_out_score_.get() + b * config_.num_mode * config_.num_future * PredictedStateDim;
+      h_out_trajectory_.get() + b * config_.num_mode * config_.num_future * PredictedStateDim;
     trajectories.emplace_back(score_ptr, trajectory_ptr, config_.num_mode, config_.num_future);
   }
 
