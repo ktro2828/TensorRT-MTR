@@ -46,24 +46,44 @@ __global__ void setPreviousPositionKernel(
   const int B, const int K, const int P, const int D, const bool * mask, float * polyline);
 
 /**
- * @brief Extract TopK elements.
+ * @brief Calculate distances from targets to polylines.
  *
- * @param K The number of K.
- * @param L The number of source polylines.
- * @param P The number of points contained in each polyline.
+ * @note `inPolyline` must have been transformed to target coordinates system.
+ *
  * @param B The number of target agents.
- * @param offsetX X offset position.
- * @param offsetY Y offset position.
- * @param AgentDim The number of agent state dimensions.
- * @param targetState Source state of target agents, in shape [B*AgentDim].
- * @param PointDim The number of point state dimensions.
- * @param inPolyline Source polylines, in shape [L*P*PointDim].
- * @param outPolyline Output polylines, in shape [K*P*PointDim].
+ * @param L The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param AgentDim The number agent state dimensions.
+ * @param targetState Source target agent state, in shape [B*AgentDim].
+ * @param PointDim The number of point dimensions.
+ * @param inPolyline Source polyline, in shape [B*L*P*PointDim].
+ * @param inPolylineMask Source polyline mask, in shape [B*K*P].
+ * @param outDistance Output distance, in shape [B*L].
  */
-__global__ void extractTopkKernel(
-  const int K, const int L, const int P, const int B, const float offsetX, const float offsetY,
-  const int AgentDim, const float * targetState, const int PointDim, const float * inPolyline,
-  float * outPolyline);
+__global__ void calculateCenterDistanceKernel(
+  const int B, const int L, const int P, const int AgentDim, const float * targetState,
+  const int PointDim, const float * inPolyline, const bool * inPolylineMask, float * outDistance);
+
+/**
+ * @brief Extract K polylines with the smallest distances.
+ *
+ * @note This kernel is implemented using shared memory.
+ *
+ * @param K The number elements to be extracted (K <= L).
+ * @param B The number of target agents.
+ * @param L The number of polylines.
+ * @param P The number of points contained in each polyline.
+ * @param D The number of point dimensions.
+ * @param inPolyline Source polyline, in shape [B*L*P*D].
+ * @param inPolylineMask Source polyline mask, in shape [B*L*P].
+ * @param inDistance Source polyline distances, in shape [B*L].
+ * @param outPolyline Output polyline, in shape [B*K*P*D].
+ * @param outPolylineMask Output polyline mask, in shape [B*K*P].
+ */
+__global__ void extractTopKPolylineKernel(
+  const int K, const int B, const int L, const int P, const int D, const float * inPolyline,
+  const bool * inPolylineMask, const float * inDistance, float * outPolyline,
+  bool * outPolylineMask);
 
 /**
  * @brief Calculate the magnitudes of polylines.
@@ -82,7 +102,7 @@ __global__ void calculatePolylineCenterKernel(
 
 /**
  * @brief In cases of the number of batch polylines (L) is greater than K,
- *  extacts the topK elements.
+ *  extracts the topK elements.
  *
  * @param L The number of source polylines.
  * @param K The number of polylines expected as the model input.
@@ -92,9 +112,6 @@ __global__ void calculatePolylineCenterKernel(
  * @param in_polyline Source polylines, in shape [L*P*PointDim].
  * @param B The number of target agents.
  * @param target_state Target agent state at the latest timestamp, in shape [B, AgentDim].
- * @param offset_x The x offset.
- * @param offset_y The y offset.
- * @param topk_index A container to store topK indices, in shape [K].
  * @param out_polyline Output polylines, in shape [B*K*P*(PointDim+2)].
  * @param out_polyline_mask Output polyline masks, in shape [B*K*P].
  * @param out_polyline_center Output magnitudes of each polyline with respect to target coords,
@@ -104,9 +121,8 @@ __global__ void calculatePolylineCenterKernel(
  */
 cudaError_t polylinePreprocessWithTopkLauncher(
   const int L, const int K, const int P, const int PointDim, const float * in_polyline, const int B,
-  const int AgentDim, const float * target_state, const float offsetX, const float offsetY,
-  int * topk_index, float * out_polyline, bool * out_polyline_mask, float * out_polyline_center,
-  cudaStream_t stream);
+  const int AgentDim, const float * target_state, float * out_polyline, bool * out_polyline_mask,
+  float * out_polyline_center, cudaStream_t stream);
 
 /**
  * @brief Do preprocess for polyline if the number of batched polylines is K.
