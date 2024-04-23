@@ -49,6 +49,7 @@ cmake --build build -j${nproc}
 ### Download onnx
 
 ```shell
+# download onnx.zip
 gh release download onnx
 ```
 
@@ -77,9 +78,13 @@ gh release download onnx
 
 ## TODO
 
-- [x] Add TensorRT custom plugins
-- [x] Add pre-process
-- [x] Add post-process
-- [x] Add inference sample
-- [ ] Add visualization
-- [ ] Add evaluation
+- [x] TensorRT custom plugins
+- [x] CUDA kernels
+  - [x] pre-process
+  - [x] post-process
+- [ ] Shape inference
+  - [x] static shape
+  - [ ] dynamic shape
+- [x] Inference sample
+- [ ] Visualization
+- [ ] Evaluation
