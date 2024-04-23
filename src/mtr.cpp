@@ -53,7 +53,7 @@ bool TrtMTR::doInference(
                                 d_in_polyline_.get(),        d_in_polyline_mask_.get(),
                                 d_in_polyline_center_.get(), d_in_last_pos_.get(),
                                 d_target_index_.get(),       d_intention_points_.get(),
-                                d_out_trajectory_.get(),     d_out_score_.get()};
+                                d_out_score_.get(),          d_out_trajectory_.get()};
 
   if (!builder_->enqueueV2(buffer.data(), stream_, nullptr)) {
     std::cerr << "Fail to do inference" << std::endl;
@@ -70,8 +70,6 @@ bool TrtMTR::doInference(
 
 void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
 {
-  // !!TODO!!
-
   // source data
   d_target_index_ = cuda::make_unique<int[]>(agent_data.TargetNum);
   d_label_index_ = cuda::make_unique<int[]>(agent_data.AgentNum);
@@ -112,26 +110,10 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
   d_out_score_ = cuda::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
   d_out_trajectory_ = cuda::make_unique<float[]>(
     agent_data.TargetNum * config_.num_mode * config_.num_future * PredictedStateDim);
-  h_out_score_ = std::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
+  h_out_score_ = std::make_unique<float[]>(sizeof(float) * agent_data.TargetNum * config_.num_mode);
   h_out_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * config_.num_mode * config_.num_future * PredictedStateDim);
-
-  // debug
-  h_debug_in_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inAgentDim);
-  h_debug_in_trajectory_mask_ =
-    std::make_unique<bool[]>(agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength);
-  h_debug_in_last_pos_ = std::make_unique<float[]>(agent_data.TargetNum * agent_data.AgentNum * 3);
-  h_debug_in_polyline_ = std::make_unique<float[]>(
-    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum * inPointDim);
-  h_debug_in_polyline_mask_ = std::make_unique<bool[]>(
-    agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum);
-  h_debug_in_polyline_center_ =
-    std::make_unique<float[]>(agent_data.TargetNum * config_.max_num_polyline * 3);
-
-  h_debug_out_score_ = std::make_unique<float[]>(agent_data.TargetNum * config_.num_mode);
-  h_debug_out_trajectory_ = std::make_unique<float[]>(
-    agent_data.TargetNum * config_.num_mode * config_.num_future * PredictedStateDim);
+    sizeof(float) * agent_data.TargetNum * config_.num_mode * config_.num_future *
+    PredictedStateDim);
 }
 
 bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
@@ -167,6 +149,7 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   // DEBUG
   event_debugger_.createEvent(stream_);
+
   // Preprocess
   CHECK_CUDA_ERROR(agentPreprocessLauncher(
     agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, agent_data.StateDim,
@@ -193,8 +176,6 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
 
   event_debugger_.printElapsedTime(stream_);
 
-  // debugPreprocess(agent_data, polyline_data);
-
   return true;
 }
 
@@ -214,8 +195,6 @@ bool TrtMTR::postProcess(AgentData & agent_data, std::vector<PredictedTrajectory
       PredictedStateDim,
     cudaMemcpyDeviceToHost, stream_));
 
-  // debugPostprocess(agent_data);
-
   trajectories.reserve(agent_data.TargetNum);
   for (size_t b = 0; b < agent_data.TargetNum; ++b) {
     const auto score_ptr = h_out_score_.get() + b * config_.num_mode;
@@ -225,173 +204,5 @@ bool TrtMTR::postProcess(AgentData & agent_data, std::vector<PredictedTrajectory
   }
 
   return true;
-}
-
-void TrtMTR::debugPreprocess(const AgentData & agent_data, const PolylineData & polyline_data)
-{
-  // DEBUG
-  const size_t inAgentDim = agent_data.StateDim + agent_data.ClassNum + agent_data.TimeLength +
-                            3;  // TODO: define this in global
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_trajectory_.get(), d_in_trajectory_.get(),
-    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength * inAgentDim,
-    cudaMemcpyDeviceToHost, stream_));
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_trajectory_mask_.get(), d_in_trajectory_mask_.get(),
-    sizeof(bool) * agent_data.TargetNum * agent_data.AgentNum * agent_data.TimeLength,
-    cudaMemcpyDeviceToHost, stream_));
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_last_pos_.get(), d_in_last_pos_.get(),
-    sizeof(float) * agent_data.TargetNum * agent_data.AgentNum * 3, cudaMemcpyDeviceToHost,
-    stream_));
-
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_polyline_.get(), d_in_polyline_.get(),
-    sizeof(float) * agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum *
-      (polyline_data.StateDim + 2),
-    cudaMemcpyDeviceToHost, stream_));
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_polyline_mask_.get(), d_in_polyline_mask_.get(),
-    sizeof(bool) * agent_data.TargetNum * config_.max_num_polyline * polyline_data.PointNum,
-    cudaMemcpyDeviceToHost, stream_));
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_in_polyline_center_.get(), d_in_polyline_center_.get(),
-    sizeof(float) * agent_data.TargetNum * config_.max_num_polyline * 3, cudaMemcpyDeviceToHost,
-    stream_));
-
-  std::cout << "=== Trajectory data ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
-      std::cout << "  Agent " << n << ":\n";
-      for (size_t t = 0; t < agent_data.TimeLength; ++t) {
-        std::cout << "  Time " << t << ": ";
-        for (size_t d = 0; d < inAgentDim; ++d) {
-          std::cout << h_debug_in_trajectory_.get()
-                         [(b * agent_data.AgentNum * agent_data.TimeLength +
-                           n * agent_data.TimeLength + t) *
-                            inAgentDim +
-                          d]
-                    << " ";
-        }
-        std::cout << "\n";
-      }
-    }
-  }
-
-  std::cout << "=== Trajectory mask ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
-      std::cout << "  Agent " << n << ": ";
-      for (size_t t = 0; t < agent_data.TimeLength; ++t) {
-        std::cout << h_debug_in_trajectory_mask_
-                       .get()[(b * agent_data.AgentNum + n) * agent_data.TimeLength + t]
-                  << " ";
-      }
-      std::cout << "\n";
-    }
-  }
-
-  std::cout << "=== Last pos ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t n = 0; n < agent_data.AgentNum; ++n) {
-      std::cout << "  Agent " << n << ": ";
-      for (size_t d = 0; d < 3; ++d) {
-        std::cout << h_debug_in_last_pos_.get()[(b * agent_data.AgentNum + n) * 3 + d] << " ";
-      }
-      std::cout << "\n";
-    }
-  }
-
-  std::cout << "=== Polyline data ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
-      std::cout << "  Polyline " << k << ":\n";
-      for (size_t p = 0; p < polyline_data.PointNum; ++p) {
-        std::cout << "    Point " << p << ": ";
-        for (size_t d = 0; d < polyline_data.StateDim + 2; ++d) {
-          std::cout << h_debug_in_polyline_.get()
-                         [(b * config_.max_num_polyline * polyline_data.PointNum +
-                           k * polyline_data.PointNum + p) *
-                            (polyline_data.StateDim + 2) +
-                          d]
-                    << " ";
-        }
-        std::cout << "\n";
-      }
-    }
-  }
-
-  std::cout << "=== Polyline mask ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
-      std::cout << "  Polyline " << k << ": ";
-      for (size_t p = 0; p < polyline_data.PointNum; ++p) {
-        std::cout << h_debug_in_polyline_mask_
-                       .get()[(b * config_.max_num_polyline + k) * polyline_data.PointNum + p]
-                  << " ";
-      }
-      std::cout << "\n";
-    }
-  }
-
-  std::cout << "=== Polyline center ===\n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t k = 0; k < config_.max_num_polyline; ++k) {
-      std::cout << "  Polyline " << k << ": ";
-      for (size_t d = 0; d < 3; ++d) {
-        std::cout << h_debug_in_polyline_center_
-                       .get()[(b * config_.max_num_polyline + k) * polyline_data.PointNum + d]
-                  << " ";
-      }
-      std::cout << "\n";
-    }
-  }
-}
-
-void TrtMTR::debugPostprocess(const AgentData & agent_data)
-{
-  // DEBUG
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_out_score_.get(), d_out_score_.get(),
-    sizeof(float) * agent_data.TargetNum * config_.num_mode, cudaMemcpyDeviceToHost, stream_));
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_debug_out_trajectory_.get(), d_out_trajectory_.get(),
-    sizeof(float) * agent_data.TargetNum * config_.num_mode * config_.num_future *
-      PredictedStateDim,
-    cudaMemcpyDeviceToHost, stream_));
-
-  std::cout << "=== Out score === \n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t m = 0; m < config_.num_mode; ++m) {
-      std::cout << h_debug_out_score_.get()[b * config_.num_mode + m] << " ";
-    }
-    std::cout << "\n";
-  }
-
-  std::cout << "=== Out trajectory === \n";
-  for (size_t b = 0; b < agent_data.TargetNum; ++b) {
-    std::cout << "Batch " << b << ":\n";
-    for (size_t m = 0; m < config_.num_mode; ++m) {
-      std::cout << "  Mode " << m << ":\n";
-      for (size_t t = 0; t < config_.num_future; ++t) {
-        std::cout << "  Time " << t << ": ";
-        for (size_t d = 0; d < PredictedStateDim; ++d) {
-          std::cout << h_debug_out_trajectory_.get()
-                         [(b * config_.num_mode * config_.num_future + m * config_.num_future + t) *
-                            PredictedStateDim +
-                          d]
-                    << " ";
-        }
-        std::cout << "\n";
-      }
-    }
-  }
 }
 }  // namespace mtr
