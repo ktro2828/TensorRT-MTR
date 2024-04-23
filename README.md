@@ -2,7 +2,7 @@
 
 Support of inference with TensorRT for [sshaoshuai/MTR](https://github.com/sshaoshuai/MTR).
 
-## Network
+## Inputs/Outputs
 
 ### Inputs
 
@@ -28,8 +28,8 @@ where,
 
 ### Outputs
 
-- `scores <float: [N, M]>`
-- `trajectory <float: [N, M, Tf, Dt]>`
+- `scores <float: [B, M]>`
+- `trajectory <float: [B, M, Tf, Dt]>`
 
 where,
 
