@@ -53,7 +53,7 @@ struct MTRConfig
     const size_t num_past = 10, const size_t num_mode = 6, const size_t num_future = 80,
     const size_t max_num_polyline = 768, const size_t max_num_point = 20,
     const float point_break_distance = 1.0f,
-    const std::string & intention_point_filepath = "./data/waymo64.csv",
+    const std::string & intention_point_filepath = "./data/IntentionPoint.csv",
     const size_t num_intention_point_cluster = 64)
   : target_labels(target_labels),
     num_class(target_labels.size()),
