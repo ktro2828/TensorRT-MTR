@@ -39,10 +39,20 @@ where,
 
 ## Build & Run
 
+### Build
+
 ```shell
 cmake -B build
 cmake --build build -j${nproc}
 ```
+
+### Download onnx
+
+```shell
+gh release download onnx
+```
+
+### Execute
 
 ```shell
 # with trtexec
@@ -56,18 +66,20 @@ cmake --build build -j${nproc}
 
 ```shell
 # test agent data container defined in `include/mtr/agent.hpp`
-./build/agent_test
+./build/test_agent
 
 # test polyline data container defined in `include/mtr/polyline.hpp`
-./build/polyline_test
+./build/test_polyline
 
 # test intention point data container defined in `include/mtr/intention_point.hpp`
-./build/intention_point_test
+./build/test_intention_point
 ```
 
 ## TODO
 
 - [x] Add TensorRT custom plugins
-- [ ] Add pre-process
-- [ ] Add post-process
-- [ ] Add inference sample
+- [x] Add pre-process
+- [x] Add post-process
+- [x] Add inference sample
+- [ ] Add visualization
+- [ ] Add evaluation
