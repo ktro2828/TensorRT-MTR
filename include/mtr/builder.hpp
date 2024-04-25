@@ -97,8 +97,8 @@ struct BuildConfig
    */
   BuildConfig(
     const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 50),
-    const BatchOptConfig & batch_agent = BatchOptConfig(10, 50, 100))
-  : precision(PrecisionType::FP32),
+    const BatchOptConfig & batch_agent = BatchOptConfig(1, 50, 100))
+  : precision(PrecisionType::FP16),
     calibration(CalibrationType::MINMAX),
     batch_target(batch_target),
     batch_agent(batch_agent)
@@ -115,7 +115,7 @@ struct BuildConfig
   BuildConfig(
     const PrecisionType & precision, const CalibrationType & calibration,
     const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 50),
-    const BatchOptConfig & batch_agent = BatchOptConfig(10, 50, 100))
+    const BatchOptConfig & batch_agent = BatchOptConfig(1, 50, 100))
   : precision(precision),
     calibration(calibration),
     batch_target(batch_target),
