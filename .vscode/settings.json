@@ -97,7 +97,14 @@
     "typeindex": "cpp",
     "typeinfo": "cpp",
     "variant": "cpp",
-    "__nullptr": "cpp"
+    "__nullptr": "cpp",
+    "*.ipp": "cpp",
+    "*.txx": "cpp",
+    "__config": "cpp",
+    "__locale": "cpp",
+    "__string": "cpp",
+    "filesystem": "cpp",
+    "locale": "cpp"
   },
   "ros.distro": "humble"
 }

@@ -51,7 +51,7 @@ struct LanePoint
   {
   }
 
-  static const std::size_t Dim = PointStateDim;
+  static const std::size_t dim{PointStateDim};
 
   /**
    * @brief Return the x position of the point.
@@ -107,7 +107,7 @@ struct LanePoint
   const float * data_ptr() const noexcept { return data_.data(); }
 
 private:
-  std::array<float, Dim> data_;
+  std::array<float, dim> data_;
   float x_, y_, z_, label_;
 };
 
@@ -127,11 +127,11 @@ struct PolylineData
   PolylineData(
     const std::vector<LanePoint> & points, const int min_num_polyline, const int max_num_point,
     const float distance_threshold)
-  : PolylineNum(0), PointNum(max_num_point), distance_threshold_(distance_threshold)
+  : num_polyline_(0), num_point_(max_num_point), distance_threshold_(distance_threshold)
   {
     std::size_t point_cnt = 0;
 
-    // point_cnt > PointNum at a to a new polyline group
+    // point_cnt > num_point_ at a to a new polyline group
     // distance > threshold -> add to a new polyline group
     for (std::size_t i = 0; i < points.size(); ++i) {
       auto & cur_point = points.at(i);
@@ -141,12 +141,12 @@ struct PolylineData
         continue;
       }
 
-      if (point_cnt >= PointNum) {
+      if (point_cnt >= num_point_) {
         addNewPolyline(cur_point, point_cnt);
       } else if (const auto & prev_point = points.at(i - 1);
                  cur_point.distance(prev_point) >= distance_threshold_ ||
                  cur_point.label() != prev_point.label()) {
-        if (point_cnt < PointNum) {
+        if (point_cnt < num_point_) {
           addEmptyPoints(point_cnt);
         }
         addNewPolyline(cur_point, point_cnt);
@@ -156,33 +156,39 @@ struct PolylineData
     }
     addEmptyPoints(point_cnt);
 
-    if (PolylineNum < min_num_polyline) {
-      addEmptyPolyline(min_num_polyline - PolylineNum);
+    if (num_polyline_ < min_num_polyline) {
+      addEmptyPolyline(min_num_polyline - num_polyline_);
     }
   }
 
-  std::size_t PolylineNum;
-  const std::size_t PointNum;
-  const std::size_t StateDim = PointStateDim;
+  // Return the total number of polylines.
+  size_t num_polyline() const { return num_polyline_; }
 
-  /**
-   * @brief Return the data shape.
-   *
-   * @return std::tuple<size_t, size_t, size_t> (PolylineNum, PointNum, StateDim).
-   */
-  std::tuple<size_t, size_t, size_t> shape() const { return {PolylineNum, PointNum, StateDim}; }
+  // Return the number of points contained in each polyline.
+  size_t num_point() const { return num_point_; }
 
-  /**
-   * @brief Return the address pointer of data array.
-   *
-   * @return float* The pointer of data array.
-   */
+  // Return the number of point dimensions.
+  size_t num_state_dim() const { return num_state_dim_; }
+
+  // Return the data shape which is meant to `(L, P, D)`.
+  std::tuple<size_t, size_t, size_t> shape() const
+  {
+    return {num_polyline_, num_point_, num_state_dim_};
+  }
+
+  // Return the total number of elements which is meant to `L*P*D`.
+  size_t size() const { return num_polyline_ * num_point_ * num_state_dim_; }
+
+  // Return the input attribute size which is meant to `D+2`.
+  size_t input_attribute_size() const { return num_state_dim_ + 2; }
+
+  // Return the address pointer of data array.
   const float * data_ptr() const noexcept { return data_.data(); }
 
 private:
   /**
    * @brief Add a new polyline group filled by empty points. This member function increments
-   * `PolylineNum` by `num_polyline` internally.
+   * `num_polyline_` by `num_polyline` internally.
    *
    * @param num_polyline The number of polylines to add.
    */
@@ -198,7 +204,7 @@ private:
 
   /**
    * @brief Add a new polyline group with the specified point. This member function increments
-   * `PolylineNum` by `1` internally.
+   * `num_polyline_` by `1` internally.
    *
    * @param point LanePoint instance.
    * @param point_cnt The current count of points, which will be reset to `1`.
@@ -206,27 +212,27 @@ private:
   void addNewPolyline(const LanePoint & point, std::size_t & point_cnt)
   {
     const auto s = point.data_ptr();
-    for (std::size_t d = 0; d < StateDim; ++d) {
+    for (std::size_t d = 0; d < num_state_dim_; ++d) {
       data_.push_back(*(s + d));
     }
-    ++PolylineNum;
+    ++num_polyline_;
     point_cnt = 1;
   }
 
   /**
-   * @brief Add `(PointNum - point_cnt)` empty points filled by `0.0`.
+   * @brief Add `(num_point_ - point_cnt)` empty points filled by `0.0`.
    *
-   * @param point_cnt The number of current count of points, which will be reset to `PointNum`.
+   * @param point_cnt The number of current count of points, which will be reset to `num_point_`.
    */
   void addEmptyPoints(std::size_t & point_cnt)
   {
     const auto s = LanePoint::empty().data_ptr();
-    for (std::size_t n = point_cnt; n < PointNum; ++n) {
-      for (std::size_t d = 0; d < StateDim; ++d) {
+    for (std::size_t n = point_cnt; n < num_point_; ++n) {
+      for (std::size_t d = 0; d < num_state_dim_; ++d) {
         data_.push_back(*(s + d));
       }
     }
-    point_cnt = PointNum;
+    point_cnt = num_point_;
   }
 
   /**
@@ -238,12 +244,15 @@ private:
   void addPoint(const LanePoint & point, std::size_t & point_cnt)
   {
     const auto s = point.data_ptr();
-    for (std::size_t d = 0; d < StateDim; ++d) {
+    for (std::size_t d = 0; d < num_state_dim_; ++d) {
       data_.push_back(*(s + d));
     }
     ++point_cnt;
   }
 
+  size_t num_polyline_;
+  const std::size_t num_point_;
+  const std::size_t num_state_dim_{PointStateDim};
   std::vector<float> data_;
   const float distance_threshold_;
 };

@@ -156,6 +156,9 @@ private:
 
   IntentionPoint intention_point_;
 
+  size_t num_target_, num_agent_, num_timestamp_, num_agent_dim_, num_agent_class_;
+  size_t num_polyline_, num_point_, num_point_dim_;
+
   // source data
   cuda::unique_ptr<int[]> d_target_index_{nullptr};
   cuda::unique_ptr<int[]> d_label_index_{nullptr};
