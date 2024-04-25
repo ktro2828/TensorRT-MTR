@@ -85,7 +85,7 @@ int main()
   }
   mtr::AgentData data(histories, sdc_index, target_index, label_index, timestamps);
 
-  const auto [num_agent, time_length, num_dim] = data.shape();
+  const auto & [num_agent, time_length, num_dim] = data.shape();
   assert(num_agent == N);
   assert(time_length == T);
   assert(num_dim == D);

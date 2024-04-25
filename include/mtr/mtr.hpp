@@ -109,7 +109,7 @@ public:
    * @return True if the inference finishes successfully.
    */
   bool doInference(
-    AgentData & agent_data, PolylineData & polyline_data,
+    const AgentData & agent_data, const PolylineData & polyline_data,
     std::vector<PredictedTrajectory> & trajectories);
 
   /**
@@ -126,7 +126,7 @@ private:
    * @param agent_data The input agent data.
    * @param polyline_data The input polyline data.
    */
-  void initCudaPtr(AgentData & agent_data, PolylineData & polyline_data);
+  void initCudaPtr(const AgentData & agent_data, const PolylineData & polyline_data);
 
   /**
    * @brief Execute pre-process.
@@ -135,7 +135,7 @@ private:
    * @param polyline_data The input polyline data.
    * @return True if the pre-process finishes successfully.
    */
-  bool preProcess(AgentData & agent_data, PolylineData & polyline_data);
+  bool preProcess(const AgentData & agent_data, const PolylineData & polyline_data);
 
   /**
    * @brief Execute post-process.
@@ -144,7 +144,7 @@ private:
    * @param trajectories A container to store predicted trajectories.
    * @return True if the post-process finishes successfully.
    */
-  bool postProcess(AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories);
+  bool postProcess(const AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories);
 
   // model parameters
   MTRConfig config_;
@@ -153,6 +153,9 @@ private:
   cudaStream_t stream_{nullptr};
 
   IntentionPoint intention_point_;
+
+  size_t num_target_, num_agent_, num_timestamp_, num_agent_dim_, num_agent_class_;
+  size_t num_polyline_, num_point_, num_point_dim_;
 
   // source data
   cuda::unique_ptr<int[]> d_target_index_{nullptr};
@@ -183,29 +186,6 @@ private:
 
   // debug
   cuda::EventDebugger event_debugger_;
-  std::unique_ptr<float[]> h_debug_in_trajectory_{nullptr};
-  std::unique_ptr<bool[]> h_debug_in_trajectory_mask_{nullptr};
-  std::unique_ptr<float[]> h_debug_in_last_pos_{nullptr};
-  std::unique_ptr<float[]> h_debug_in_polyline_{nullptr};
-  std::unique_ptr<bool[]> h_debug_in_polyline_mask_{nullptr};
-  std::unique_ptr<float[]> h_debug_in_polyline_center_{nullptr};
-  std::unique_ptr<float[]> h_debug_out_score_{nullptr};
-  std::unique_ptr<float[]> h_debug_out_trajectory_{nullptr};
-
-  /**
-   * @brief Display input data after finishing pre-process.
-   *
-   * @param agent_data The input agent data.
-   * @param polyline_data The input polyline data.
-   */
-  void debugPreprocess(const AgentData & agent_data, const PolylineData & polyline_data);
-
-  /**
-   * @brief Display output data after finishing post-process.
-   *
-   * @param agent_data The input agent data.
-   */
-  void debugPostprocess(const AgentData & agent_data);
 };  // class TrtMTR
 }  // namespace mtr
 #endif  // MTR__NETWORK_HPP_

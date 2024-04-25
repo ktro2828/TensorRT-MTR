@@ -37,7 +37,7 @@ void test_case1()
     points.emplace_back(point);
   }
 
-  mtr::PolylineData data(points, K, P, 2.0f);
+  const mtr::PolylineData data(points, K, P, 2.0f);
   const auto & [num_polyline, num_point, num_dim] = data.shape();
   assert(num_polyline == K);
   assert(num_point == P);
@@ -45,11 +45,11 @@ void test_case1()
 
   std::cout << "=== Polyline data ===\n";
   const float * data_ptr = data.data_ptr();
-  for (std::size_t k = 0; k < data.PolylineNum; ++k) {
+  for (std::size_t k = 0; k < data.num_polyline(); ++k) {
     std::cout << "Batch " << k << ":\n";
-    for (std::size_t p = 0; p < data.PointNum; ++p) {
+    for (std::size_t p = 0; p < data.num_point(); ++p) {
       std::cout << "  Point " << p << ": ";
-      for (std::size_t d = 0; d < data.StateDim; ++d) {
+      for (std::size_t d = 0; d < data.num_state_dim(); ++d) {
         std::cout << *(data_ptr + k * P * D + p * D + d) << " ";
       }
       std::cout << "\n";
@@ -90,7 +90,7 @@ void test_case2()
     points.emplace_back(point);
   }
 
-  mtr::PolylineData data(points, K, P, 2.0f);
+  const mtr::PolylineData data(points, K, P, 2.0f);
   const auto & [num_polyline, num_point, num_dim] = data.shape();
   assert(num_polyline >= K && num_polyline == 6);
   assert(num_point == P);
@@ -98,11 +98,11 @@ void test_case2()
 
   std::cout << "=== Polyline data ===\n";
   const float * data_ptr = data.data_ptr();
-  for (std::size_t k = 0; k < data.PolylineNum; ++k) {
+  for (std::size_t k = 0; k < data.num_polyline(); ++k) {
     std::cout << "Batch " << k << ":\n";
-    for (std::size_t p = 0; p < data.PointNum; ++p) {
+    for (std::size_t p = 0; p < data.num_point(); ++p) {
       std::cout << "  Point " << p << ": ";
-      for (std::size_t d = 0; d < data.StateDim; ++d) {
+      for (std::size_t d = 0; d < data.num_state_dim(); ++d) {
         std::cout << *(data_ptr + k * P * D + p * D + d) << " ";
       }
       std::cout << "\n";
