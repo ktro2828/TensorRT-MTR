@@ -39,7 +39,7 @@ TrtMTR::TrtMTR(
 }
 
 bool TrtMTR::doInference(
-  AgentData & agent_data, PolylineData & polyline_data,
+  const AgentData & agent_data, const PolylineData & polyline_data,
   std::vector<PredictedTrajectory> & trajectories)
 {
   initCudaPtr(agent_data, polyline_data);
@@ -68,7 +68,7 @@ bool TrtMTR::doInference(
   return true;
 }
 
-void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
+void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & polyline_data)
 {
   // source data
   d_target_index_ = cuda::make_unique<int[]>(agent_data.TargetNum);
@@ -116,7 +116,7 @@ void TrtMTR::initCudaPtr(AgentData & agent_data, PolylineData & polyline_data)
     PredictedStateDim);
 }
 
-bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
+bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyline_data)
 {
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_target_index_.get(), agent_data.target_index.data(), sizeof(int) * agent_data.TargetNum,
@@ -179,7 +179,8 @@ bool TrtMTR::preProcess(AgentData & agent_data, PolylineData & polyline_data)
   return true;
 }
 
-bool TrtMTR::postProcess(AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories)
+bool TrtMTR::postProcess(
+  const AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories)
 {
   // Postprocess
   CHECK_CUDA_ERROR(postprocessLauncher(

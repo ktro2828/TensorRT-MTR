@@ -111,7 +111,7 @@ public:
    * @return True if the inference finishes successfully.
    */
   bool doInference(
-    AgentData & agent_data, PolylineData & polyline_data,
+    const AgentData & agent_data, const PolylineData & polyline_data,
     std::vector<PredictedTrajectory> & trajectories);
 
   /**
@@ -128,7 +128,7 @@ private:
    * @param agent_data The input agent data.
    * @param polyline_data The input polyline data.
    */
-  void initCudaPtr(AgentData & agent_data, PolylineData & polyline_data);
+  void initCudaPtr(const AgentData & agent_data, const PolylineData & polyline_data);
 
   /**
    * @brief Execute pre-process.
@@ -137,7 +137,7 @@ private:
    * @param polyline_data The input polyline data.
    * @return True if the pre-process finishes successfully.
    */
-  bool preProcess(AgentData & agent_data, PolylineData & polyline_data);
+  bool preProcess(const AgentData & agent_data, const PolylineData & polyline_data);
 
   /**
    * @brief Execute post-process.
@@ -146,7 +146,7 @@ private:
    * @param trajectories A container to store predicted trajectories.
    * @return True if the post-process finishes successfully.
    */
-  bool postProcess(AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories);
+  bool postProcess(const AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories);
 
   // model parameters
   MTRConfig config_;

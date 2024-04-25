@@ -76,7 +76,7 @@ struct AgentState
    *
    * @return float*
    */
-  float * data_ptr() noexcept { return data_.data(); }
+  const float * data_ptr() const noexcept { return data_.data(); }
 
 private:
   std::array<float, Dim> data_;
@@ -96,7 +96,7 @@ struct AgentHistory
    * @param max_time_length History length.
    */
   AgentHistory(
-    AgentState & state, const std::string & object_id, const float current_time,
+    const AgentState & state, const std::string & object_id, const float current_time,
     const size_t max_time_length)
   : data_((max_time_length - 1) * StateDim),
     object_id_(object_id),
@@ -184,7 +184,7 @@ struct AgentHistory
    *
    * @return float* The pointer of data array.
    */
-  float * data_ptr() noexcept { return data_.data(); }
+  const float * data_ptr() const noexcept { return data_.data(); }
 
   /**
    * @brief Check whether the latest valid state is too old or not.
@@ -230,7 +230,7 @@ struct AgentData
    * @param timestamps An array of timestamps.
    */
   AgentData(
-    std::vector<AgentHistory> & histories, const int sdc_index,
+    const std::vector<AgentHistory> & histories, const int sdc_index,
     const std::vector<int> & target_index, const std::vector<int> & label_index,
     const std::vector<float> & timestamps)
   : TargetNum(target_index.size()),
@@ -294,21 +294,21 @@ struct AgentData
    *
    * @return float* The pointer of data array.
    */
-  float * data_ptr() noexcept { return data_.data(); }
+  const float * data_ptr() const noexcept { return data_.data(); }
 
   /**
    * @brief Return the address pointer of data array for target agents.
    *
    * @return float* The pointer of data array for target agents.
    */
-  float * target_data_ptr() noexcept { return target_data_.data(); }
+  const float * target_data_ptr() const noexcept { return target_data_.data(); }
 
   /**
    * @brief Return the address pointer of data array for ego vehicle.
    *
    * @return float* The pointer of data array for ego vehicle.
    */
-  float * ego_data_ptr() noexcept { return ego_data_.data(); }
+  const float * ego_data_ptr() const noexcept { return ego_data_.data(); }
 
 private:
   std::vector<float> data_;

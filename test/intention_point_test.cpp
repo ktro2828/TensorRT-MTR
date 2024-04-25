@@ -11,7 +11,7 @@ int main()
   auto intention_point = mtr::IntentionPoint(filename, num_cluster);
 
   std::vector<std::string> label_names = {"VEHICLE", "PEDESTRIAN", "CYCLIST", "VEHICLE"};
-  std::vector<float> points = intention_point.get_points(label_names);
+  const auto points = intention_point.get_points(label_names);
 
   for (size_t i = 0; i < label_names.size(); ++i) {
     std::cout << "Label " << label_names.at(i) << ":\n";

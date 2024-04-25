@@ -37,7 +37,7 @@ void test_case1()
     points.emplace_back(point);
   }
 
-  mtr::PolylineData data(points, K, P, 2.0f);
+  const mtr::PolylineData data(points, K, P, 2.0f);
   const auto & [num_polyline, num_point, num_dim] = data.shape();
   assert(num_polyline == K);
   assert(num_point == P);
@@ -90,7 +90,7 @@ void test_case2()
     points.emplace_back(point);
   }
 
-  mtr::PolylineData data(points, K, P, 2.0f);
+  const mtr::PolylineData data(points, K, P, 2.0f);
   const auto & [num_polyline, num_point, num_dim] = data.shape();
   assert(num_polyline >= K && num_polyline == 6);
   assert(num_point == P);

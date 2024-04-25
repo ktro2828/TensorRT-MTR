@@ -104,7 +104,7 @@ struct LanePoint
    *
    * @return float*
    */
-  float * data_ptr() noexcept { return data_.data(); }
+  const float * data_ptr() const noexcept { return data_.data(); }
 
 private:
   std::array<float, Dim> data_;
@@ -125,7 +125,7 @@ struct PolylineData
    * @param distance_threshold The distance threshold to separate polylines.
    */
   PolylineData(
-    std::vector<LanePoint> points, const int min_num_polyline, const int max_num_point,
+    const std::vector<LanePoint> & points, const int min_num_polyline, const int max_num_point,
     const float distance_threshold)
   : PolylineNum(0), PointNum(max_num_point), distance_threshold_(distance_threshold)
   {
@@ -177,7 +177,7 @@ struct PolylineData
    *
    * @return float* The pointer of data array.
    */
-  float * data_ptr() noexcept { return data_.data(); }
+  const float * data_ptr() const noexcept { return data_.data(); }
 
 private:
   /**
@@ -203,7 +203,7 @@ private:
    * @param point LanePoint instance.
    * @param point_cnt The current count of points, which will be reset to `1`.
    */
-  void addNewPolyline(LanePoint & point, std::size_t & point_cnt)
+  void addNewPolyline(const LanePoint & point, std::size_t & point_cnt)
   {
     const auto s = point.data_ptr();
     for (std::size_t d = 0; d < StateDim; ++d) {
@@ -235,7 +235,7 @@ private:
    * @param point
    * @param point_cnt
    */
-  void addPoint(LanePoint & point, std::size_t & point_cnt)
+  void addPoint(const LanePoint & point, std::size_t & point_cnt)
   {
     const auto s = point.data_ptr();
     for (std::size_t d = 0; d < StateDim; ++d) {
