@@ -94,14 +94,13 @@ struct BuildConfig
 
   /**
    * @brief Construct a new instance with default configurations.
-   * TODO: for dynamic shape inference, FP32 failed to build engine
    */
   BuildConfig()
   : precision(PrecisionType::FP32),
     calibration(CalibrationType::MINMAX),
     is_dynamic_(false),
-    batch_target(1, 10, 50),
-    batch_agent(1, 50, 100)
+    batch_target(1, 10, 20),
+    batch_agent(1, 30, 50)
   {
   }
 
@@ -115,8 +114,8 @@ struct BuildConfig
   BuildConfig(
     const bool is_dynamic, const PrecisionType & precision = PrecisionType::FP32,
     const CalibrationType & calibration = CalibrationType::MINMAX,
-    const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 50),
-    const BatchOptConfig & batch_agent = BatchOptConfig(1, 50, 100))
+    const BatchOptConfig & batch_target = BatchOptConfig(1, 10, 20),
+    const BatchOptConfig & batch_agent = BatchOptConfig(1, 30, 50))
   : is_dynamic_(is_dynamic),
     precision(precision),
     calibration(calibration),

@@ -130,6 +130,7 @@ int main(int argc, char ** argv)
 {
   auto model_path = std::string(argv[1]);
   bool is_dynamic = false;
+  mtr::PrecisionType precision = mtr::PrecisionType::FP32;
   int num_repeat = 1;
   for (int i = 2; i < argc; ++i) {
     if (strcmp(argv[i], "--dynamic") == 0) {
@@ -137,12 +138,13 @@ int main(int argc, char ** argv)
     } else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
       num_repeat = atoi(argv[i + 1]);
       ++i;
+    } else if (strcmp(argv[i], "--fp16") == 0) {
+      precision = mtr::PrecisionType::FP16;
     }
   }
 
   mtr::Debugger debugger;
   mtr::MTRConfig model_config;
-  mtr::PrecisionType precision = is_dynamic ? mtr::PrecisionType::FP16 : mtr::PrecisionType::FP32;
   mtr::BuildConfig build_config(is_dynamic, precision);
   auto model = std::make_unique<mtr::TrtMTR>(model_path, model_config, build_config);
 
