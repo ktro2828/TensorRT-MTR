@@ -19,13 +19,11 @@
 #include "mtr/trajectory.hpp"
 
 #include <cassert>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <string>
 #include <vector>
-
-static const std::string USAGE =
-  "[USAGE]: ./build/main <PATH_TO_ONNX>(or <PATH_TO_ENGINE>) [<NUM_REPEAT=1>]";
 
 /**
  * @brief Load timestamps from dat file.
@@ -130,13 +128,25 @@ mtr::PolylineData loadPolylineData(const size_t K, const size_t P, const float t
 
 int main(int argc, char ** argv)
 {
-  assert((USAGE, argc == 2 || argc == 3));
   auto model_path = std::string(argv[1]);
-  const int num_repeat = argc == 3 ? atoi(argv[2]) : 1;
-  assert(("The number of repeats must be integer > 0", num_repeat > 0));
+  bool is_dynamic = false;
+  mtr::PrecisionType precision = mtr::PrecisionType::FP32;
+  int num_repeat = 1;
+  for (int i = 2; i < argc; ++i) {
+    if (strcmp(argv[i], "--dynamic") == 0) {
+      is_dynamic = true;
+    } else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+      num_repeat = atoi(argv[i + 1]);
+      ++i;
+    } else if (strcmp(argv[i], "--fp16") == 0) {
+      precision = mtr::PrecisionType::FP16;
+    }
+  }
 
   mtr::Debugger debugger;
-  auto model = std::make_unique<mtr::TrtMTR>(model_path, "FP32");
+  mtr::MTRConfig model_config;
+  mtr::BuildConfig build_config(is_dynamic, precision);
+  auto model = std::make_unique<mtr::TrtMTR>(model_path, model_config, build_config);
 
   debugger.createEvent();
   auto config = model->config();

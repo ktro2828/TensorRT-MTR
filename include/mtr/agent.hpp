@@ -257,6 +257,8 @@ struct AgentData
   // Return the number of classes.
   size_t num_class() const { return num_class_; }
 
+  size_t num_attr() const { return num_timestamp_ + num_state_dim_ + num_class_ + 3; }
+
   // Return the data shape which is meant to `(N, T, D)`.
   std::tuple<size_t, size_t, size_t> shape() const
   {
@@ -267,11 +269,7 @@ struct AgentData
   size_t size() const { return num_agent_ * num_timestamp_ * num_state_dim_; }
 
   // Return the number of elements of MTR input (B * N * T * A).
-  size_t input_size() const
-  {
-    return num_target_ * num_agent_ * num_timestamp_ *
-           (num_timestamp_ + num_state_dim_ + num_class_ + 3);
-  }
+  size_t input_size() const { return num_target_ * num_agent_ * num_timestamp_ * num_attr(); }
 
   // Return the index number of ego.
   int ego_index() const { return ego_index_; }

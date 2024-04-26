@@ -50,7 +50,7 @@ struct MTRConfig
    */
   MTRConfig(
     const std::vector<std::string> & target_labels = {"VEHICLE", "PEDESTRIAN", "CYCLIST"},
-    const size_t num_past = 10, const size_t num_mode = 6, const size_t num_future = 80,
+    const size_t num_past = 11, const size_t num_mode = 6, const size_t num_future = 80,
     const size_t max_num_polyline = 768, const size_t max_num_point = 20,
     const float point_break_distance = 1.0f,
     const std::string & intention_point_filepath = "./data/IntentionPoint.csv",
@@ -90,17 +90,15 @@ public:
    * @brief Construct a new instance.
    *
    * @param model_path The path to engine or onnx file.
-   * @param precision The precision type.
    * @param config The configuration of model.
+   * @param build_config The configuration of build.
    * @param batch_config The configuration of batch.
    * @param max_workspace_size The max size of workspace.
-   * @param build_config The configuration of build.
    */
   TrtMTR(
-    const std::string & model_path, const std::string & precision,
-    const MTRConfig & config = MTRConfig(), const BatchConfig & batch_config = {1, 1, 1},
-    const size_t max_workspace_size = (1ULL << 30),
-    const BuildConfig & build_config = BuildConfig());
+    const std::string & model_path, const MTRConfig & config = MTRConfig(),
+    const BuildConfig & build_config = BuildConfig(),
+    const size_t max_workspace_size = (1ULL << 30));
 
   /**
    * @brief Execute inference.
@@ -156,8 +154,8 @@ private:
 
   IntentionPoint intention_point_;
 
-  size_t num_target_, num_agent_, num_timestamp_, num_agent_dim_, num_agent_class_;
-  size_t num_polyline_, num_point_, num_point_dim_;
+  size_t num_target_, num_agent_, num_timestamp_, num_agent_dim_, num_agent_class_, num_agent_attr_;
+  size_t num_polyline_, num_point_, num_point_dim_, num_point_attr_;
 
   // source data
   cuda::unique_ptr<int[]> d_target_index_{nullptr};

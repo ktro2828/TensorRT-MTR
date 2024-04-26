@@ -60,7 +60,7 @@ gh release download onnx
 <PATH_TO_TRTEXEC_BIN>/trtexec --onnx=<PATH_TO_ONNX> --staticPlugins=./build/libcustom_plugin.so
 
 # main
-./build/main <PATH_TO_ONNX_OR_ENGINE>
+./build/main <PATH_TO_ONNX_OR_ENGINE> [--dynamic --fp16 -n <NUM_REPEAT>]
 ```
 
 ### Unittest
@@ -82,9 +82,9 @@ gh release download onnx
 - [x] CUDA kernels
   - [x] pre-process
   - [x] post-process
-- [ ] Shape inference
+- [x] Shape inference
   - [x] static shape
-  - [ ] dynamic shape
+  - [x] dynamic shape
 - [x] Inference sample
 - [ ] Visualization
 - [ ] Evaluation

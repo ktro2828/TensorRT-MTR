@@ -11,6 +11,7 @@ repos:
         args: [--unsafe]
       - id: detect-private-key
       - id: end-of-file-fixer
+        exclude: data
       - id: mixed-line-ending
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
