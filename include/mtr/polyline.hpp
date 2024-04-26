@@ -170,6 +170,8 @@ struct PolylineData
   // Return the number of point dimensions.
   size_t num_state_dim() const { return num_state_dim_; }
 
+  size_t num_attr() const { return num_state_dim_ + 2; }
+
   // Return the data shape which is meant to `(L, P, D)`.
   std::tuple<size_t, size_t, size_t> shape() const
   {
@@ -178,9 +180,6 @@ struct PolylineData
 
   // Return the total number of elements which is meant to `L*P*D`.
   size_t size() const { return num_polyline_ * num_point_ * num_state_dim_; }
-
-  // Return the input attribute size which is meant to `D+2`.
-  size_t input_attribute_size() const { return num_state_dim_ + 2; }
 
   // Return the address pointer of data array.
   const float * data_ptr() const noexcept { return data_.data(); }

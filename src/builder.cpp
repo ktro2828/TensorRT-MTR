@@ -144,7 +144,7 @@ fs::path MTRBuilder::createEngineCachePath() const
   std::string calibration_name = build_config_->precision == PrecisionType::INT8
                                    ? getCalibrationName(build_config_->calibration)
                                    : "";
-  cache_engine_path.replace_extension(calibration_name + precision_name);
+  cache_engine_path.replace_extension(calibration_name + precision_name + ".engine");
   return cache_engine_path;
 }
 
@@ -299,24 +299,24 @@ bool MTRBuilder::buildEngineFromOnnx(
       profile->setDimensions(
         name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims3{batch_target.k_max, 64, 2});
     }
-    // {  // pred scores
-    //   auto name = network->getOutput(0)->getName();
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims2{batch_target.k_min, 6});
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims2{batch_target.k_opt, 6});
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims2{batch_target.k_max, 6});
-    // }
-    // {  // pred trajs
-    //   auto name = network->getOutput(1)->getName();
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims4{batch_target.k_min, 6, 80, 7});
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims4{batch_target.k_opt, 6, 80, 7});
-    //   profile->setDimensions(
-    //     name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims4{batch_target.k_max, 6, 80, 7});
-    // }
+    {  // pred scores
+      auto name = network->getOutput(0)->getName();
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims2{batch_target.k_min, 6});
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims2{batch_target.k_opt, 6});
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims2{batch_target.k_max, 6});
+    }
+    {  // pred trajs
+      auto name = network->getOutput(1)->getName();
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims4{batch_target.k_min, 6, 80, 7});
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims4{batch_target.k_opt, 6, 80, 7});
+      profile->setDimensions(
+        name, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims4{batch_target.k_max, 6, 80, 7});
+    }
     config->addOptimizationProfile(profile);
   }
 
@@ -376,7 +376,7 @@ bool MTRBuilder::isDynamic() const
   return build_config_->is_dynamic();
 }
 
-bool MTRBuilder::setBindingDimensions(int32_t index, nvinfer1::Dims dimensions)
+bool MTRBuilder::setBindingDimensions(int index, nvinfer1::Dims dimensions)
 {
   if (isDynamic()) {
     return context_->setBindingDimensions(index, dimensions);

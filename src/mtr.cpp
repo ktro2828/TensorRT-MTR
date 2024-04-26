@@ -73,9 +73,11 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
   num_timestamp_ = agent_data.num_timestamp();
   num_agent_dim_ = agent_data.num_state_dim();
   num_agent_class_ = agent_data.num_class();
+  num_agent_attr_ = agent_data.num_attr();
   num_polyline_ = polyline_data.num_polyline();
   num_point_ = polyline_data.num_point();
   num_point_dim_ = polyline_data.num_state_dim();
+  num_point_attr_ = polyline_data.num_attr();
 
   // source data
   d_target_index_ = cuda::make_unique<int[]>(num_target_);
@@ -92,14 +94,14 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
   d_in_trajectory_mask_ = cuda::make_unique<bool[]>(num_target_ * num_agent_ * num_timestamp_);
   d_in_last_pos_ = cuda::make_unique<float[]>(num_target_ * num_agent_ * 3);
   d_in_polyline_ = cuda::make_unique<float[]>(
-    num_target_ * config_.max_num_polyline * num_point_ * polyline_data.input_attribute_size());
+    num_target_ * config_.max_num_polyline * num_point_ * num_point_attr_);
   d_in_polyline_mask_ =
     cuda::make_unique<bool[]>(num_target_ * config_.max_num_polyline * num_point_);
   d_in_polyline_center_ = cuda::make_unique<float[]>(num_target_ * config_.max_num_polyline * 3);
 
   if (config_.max_num_polyline < num_polyline_) {
-    d_tmp_polyline_ = cuda::make_unique<float[]>(
-      num_target_ * num_polyline_ * num_point_ * polyline_data.input_attribute_size());
+    d_tmp_polyline_ =
+      cuda::make_unique<float[]>(num_target_ * num_polyline_ * num_point_ * num_point_attr_);
     d_tmp_polyline_mask_ = cuda::make_unique<bool[]>(num_target_ * num_polyline_ * num_point_);
     d_tmp_distance_ = cuda::make_unique<float[]>(num_target_ * num_polyline_);
   }
@@ -108,32 +110,27 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
     // TODO(ktro2828): refactor
     // obj_trajs
     builder_->setBindingDimensions(
-      0, nvinfer1::Dims4{
-           agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength, inAgentDim});
+      0, nvinfer1::Dims4{num_target_, num_agent_, num_timestamp_, num_agent_attr_});
     // obj_trajs_mask
-    builder_->setBindingDimensions(
-      1, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, agent_data.TimeLength});
+    builder_->setBindingDimensions(1, nvinfer1::Dims3{num_target_, num_agent_, num_timestamp_});
     // polylines
     builder_->setBindingDimensions(
-      2, nvinfer1::Dims4{
-           agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum, inPointDim});
+      2, nvinfer1::Dims4{num_target_, config_.max_num_polyline, num_point_, num_point_attr_});
     // polyline mask
     builder_->setBindingDimensions(
-      3, nvinfer1::Dims3{agent_data.TargetNum, config_.max_num_polyline, polyline_data.PointNum});
+      3, nvinfer1::Dims3{num_target_, config_.max_num_polyline, num_point_});
     // polyline center
-    builder_->setBindingDimensions(
-      4, nvinfer1::Dims3{agent_data.TargetNum, config_.max_num_polyline, 3});
+    builder_->setBindingDimensions(4, nvinfer1::Dims3{num_target_, config_.max_num_polyline, 3});
     // obj last pos
-    builder_->setBindingDimensions(
-      5, nvinfer1::Dims3{agent_data.TargetNum, agent_data.AgentNum, 3});
+    builder_->setBindingDimensions(5, nvinfer1::Dims3{num_target_, num_agent_, 3});
     // track index to predict
     nvinfer1::Dims targetIdxDim;
     targetIdxDim.nbDims = 1;
-    targetIdxDim.d[0] = agent_data.TargetNum;
+    targetIdxDim.d[0] = num_target_;
     builder_->setBindingDimensions(6, targetIdxDim);
     // intention points
     builder_->setBindingDimensions(
-      7, nvinfer1::Dims3{agent_data.TargetNum, config_.num_intention_point_cluster, 2});
+      7, nvinfer1::Dims3{num_target_, config_.num_intention_point_cluster, 2});
   }
 
   // outputs
