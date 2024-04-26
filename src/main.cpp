@@ -164,5 +164,6 @@ int main(int argc, char ** argv)
       std::cout << "===== [SUCCESS] Success to inference!! =====" << std::endl;
     }
     debugger.printElapsedTime("Inference time: ");
+    // mtr::debugPredictedTrajectory(trajectories);
   }
 }

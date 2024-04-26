@@ -126,5 +126,22 @@ private:
   const size_t num_state_dim_{PredictedStateDim};
   std::vector<PredictedMode> modes_;
 };  // struct PredictedTrajectory
+
+void debugPredictedTrajectory(const std::vector<PredictedTrajectory> & trajectories)
+{
+  for (const auto & trajectory : trajectories) {
+    const auto & modes = trajectory.get_modes();
+    std::cout << "Trajectory \n";
+    for (const auto & mode : modes) {
+      const auto & waypoints = mode.get_waypoints();
+      std::cout << "  Mode \n";
+      for (const auto & state : waypoints) {
+        std::cout << "    (x, y, vx, vy)=(" << state.x() << ", " << state.y() << ", " << state.vx()
+                  << ", " << state.vy() << ")\n";
+      }
+      std::cout << "\n";
+    }
+  }
+}
 }  // namespace mtr
 #endif  // MTR__TRAJECTORY_HPP_

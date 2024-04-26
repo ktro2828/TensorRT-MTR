@@ -224,7 +224,7 @@ cudaError_t polylinePreprocessWithTopkLauncher(
   const int outPointDim = PointDim + 2;
 
   // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
-  constexpr int threadsPerBlock = 256;
+  constexpr int threadsPerBlock = 1;
   const dim3 blocks1(B, L, P);
   transformPolylineKernel<<<blocks1, threadsPerBlock, 0, stream>>>(
     L, P, PointDim, inPolyline, B, AgentDim, targetState, tmpPolyline, tmpPolylineMask);
@@ -258,7 +258,7 @@ cudaError_t polylinePreprocessLauncher(
   const int outPointDim = PointDim + 2;
 
   // TODO: update the number of blocks and threads to guard from `cudaErrorIllegalAccess`
-  constexpr int threadsPerBlock = 256;
+  constexpr int threadsPerBlock = 10;
   const dim3 block3d(B, K, P);
   transformPolylineKernel<<<block3d, threadsPerBlock, 0, stream>>>(
     K, P, PointDim, inPolyline, B, AgentDim, targetState, outPolyline, outPolylineMask);

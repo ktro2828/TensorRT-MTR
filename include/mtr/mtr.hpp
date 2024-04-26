@@ -140,11 +140,10 @@ private:
   /**
    * @brief Execute post-process.
    *
-   * @param agent_data The input agent data.
    * @param trajectories A container to store predicted trajectories.
    * @return True if the post-process finishes successfully.
    */
-  bool postProcess(const AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories);
+  bool postProcess(std::vector<PredictedTrajectory> & trajectories);
 
   // model parameters
   MTRConfig config_;
@@ -185,7 +184,19 @@ private:
   std::unique_ptr<float[]> h_out_trajectory_{nullptr};
 
   // debug
+  // debug
   cuda::EventDebugger event_debugger_;
+  std::unique_ptr<float[]> h_debug_in_trajectory_{nullptr};
+  std::unique_ptr<bool[]> h_debug_in_trajectory_mask_{nullptr};
+  std::unique_ptr<float[]> h_debug_in_last_pos_{nullptr};
+  std::unique_ptr<float[]> h_debug_in_polyline_{nullptr};
+  std::unique_ptr<bool[]> h_debug_in_polyline_mask_{nullptr};
+  std::unique_ptr<float[]> h_debug_in_polyline_center_{nullptr};
+  std::unique_ptr<float[]> h_debug_out_score_{nullptr};
+  std::unique_ptr<float[]> h_debug_out_trajectory_{nullptr};
+
+  void debugPreprocess();
+  void debugPostprocess();
 };  // class TrtMTR
 }  // namespace mtr
 #endif  // MTR__NETWORK_HPP_

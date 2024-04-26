@@ -58,7 +58,7 @@ bool TrtMTR::doInference(
     return false;
   };
 
-  if (!postProcess(agent_data, trajectories)) {
+  if (!postProcess(trajectories)) {
     std::cerr << "Fail to preprocess" << std::endl;
     return false;
   }
@@ -140,6 +140,22 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
   h_out_score_ = std::make_unique<float[]>(sizeof(float) * num_target_ * config_.num_mode);
   h_out_trajectory_ = std::make_unique<float[]>(
     sizeof(float) * num_target_ * config_.num_mode * config_.num_future * PredictedStateDim);
+
+  // debug
+  h_debug_in_trajectory_ =
+    std::make_unique<float[]>(num_target_ * num_agent_ * num_timestamp_ * num_agent_attr_);
+  h_debug_in_trajectory_mask_ = std::make_unique<bool[]>(num_target_ * num_agent_ * num_timestamp_);
+  h_debug_in_last_pos_ = std::make_unique<float[]>(num_target_ * num_agent_ * 3);
+  h_debug_in_polyline_ = std::make_unique<float[]>(
+    num_target_ * config_.max_num_polyline * num_point_ * num_point_attr_);
+  h_debug_in_polyline_mask_ =
+    std::make_unique<bool[]>(num_target_ * config_.max_num_polyline * num_point_);
+  h_debug_in_polyline_center_ =
+    std::make_unique<float[]>(num_target_ * config_.max_num_polyline * 3);
+
+  h_debug_out_score_ = std::make_unique<float[]>(sizeof(float) * num_target_ * config_.num_mode);
+  h_debug_out_trajectory_ = std::make_unique<float[]>(
+    sizeof(float) * num_target_ * config_.num_mode * config_.num_future * PredictedStateDim);
 }
 
 bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyline_data)
@@ -196,16 +212,19 @@ bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyl
 
   event_debugger_.printElapsedTime(stream_);
 
+  debugPreprocess();
+
   return true;
 }
 
-bool TrtMTR::postProcess(
-  const AgentData & agent_data, std::vector<PredictedTrajectory> & trajectories)
+bool TrtMTR::postProcess(std::vector<PredictedTrajectory> & trajectories)
 {
   // Postprocess
-  CHECK_CUDA_ERROR(postprocessLauncher(
-    num_target_, config_.num_mode, config_.num_future, num_agent_dim_, d_target_state_.get(),
-    PredictedStateDim, d_out_trajectory_.get(), stream_));
+  // CHECK_CUDA_ERROR(postprocessLauncher(
+  //   num_target_, config_.num_mode, config_.num_future, num_agent_dim_, d_target_state_.get(),
+  //   PredictedStateDim, d_out_trajectory_.get(), stream_));
+
+  debugPostprocess();
 
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     h_out_score_.get(), d_out_score_.get(), sizeof(float) * num_target_ * config_.num_mode,
@@ -224,5 +243,164 @@ bool TrtMTR::postProcess(
   }
 
   return true;
+}
+
+void TrtMTR::debugPreprocess()
+{
+  // DEBUG
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_trajectory_.get(), d_in_trajectory_.get(),
+    sizeof(float) * num_target_ * num_agent_ * num_timestamp_ * num_agent_attr_,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_trajectory_mask_.get(), d_in_trajectory_mask_.get(),
+    sizeof(bool) * num_target_ * num_agent_ * num_timestamp_, cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_last_pos_.get(), d_in_last_pos_.get(), sizeof(float) * num_target_ * num_agent_ * 3,
+    cudaMemcpyDeviceToHost, stream_));
+
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_.get(), d_in_polyline_.get(),
+    sizeof(float) * num_target_ * config_.max_num_polyline * num_point_ * num_point_attr_,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_mask_.get(), d_in_polyline_mask_.get(),
+    sizeof(bool) * num_target_ * config_.max_num_polyline * num_point_, cudaMemcpyDeviceToHost,
+    stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_in_polyline_center_.get(), d_in_polyline_center_.get(),
+    sizeof(float) * num_target_ * config_.max_num_polyline * 3, cudaMemcpyDeviceToHost, stream_));
+
+  // std::cout << "=== Trajectory data ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t n = 0; n < num_agent_; ++n) {
+  //     std::cout << "  Agent " << n << ":\n";
+  //     for (size_t t = 0; t < num_timestamp_; ++t) {
+  //       std::cout << "  Time " << t << ": ";
+  //       for (size_t d = 0; d < num_agent_attr_; ++d) {
+  //         std::cout
+  //           << h_debug_in_trajectory_.get()
+  //                [(b * num_agent_ * num_timestamp_ + n * num_timestamp_ + t) * num_agent_attr_ +
+  //                d]
+  //           << " ";
+  //       }
+  //       std::cout << "\n";
+  //     }
+  //   }
+  // }
+
+  // std::cout << "=== Trajectory mask ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t n = 0; n < num_agent_; ++n) {
+  //     std::cout << "  Agent " << n << ": ";
+  //     for (size_t t = 0; t < num_timestamp_; ++t) {
+  //       std::cout << h_debug_in_trajectory_mask_.get()[(b * num_agent_ + n) * num_timestamp_ + t]
+  //                 << " ";
+  //     }
+  //     std::cout << "\n";
+  //   }
+  // }
+
+  // std::cout << "=== Last pos ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t n = 0; n < num_agent_; ++n) {
+  //     std::cout << "  Agent " << n << ": ";
+  //     for (size_t d = 0; d < 3; ++d) {
+  //       std::cout << h_debug_in_last_pos_.get()[(b * num_agent_ + n) * 3 + d] << " ";
+  //     }
+  //     std::cout << "\n";
+  //   }
+  // }
+
+  // std::cout << "=== Polyline data ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+  //     std::cout << "  Polyline " << k << ":\n";
+  //     for (size_t p = 0; p < num_point_; ++p) {
+  //       std::cout << "    Point " << p << ": ";
+  //       for (size_t d = 0; d < num_point_attr_; ++d) {
+  //         std::cout << h_debug_in_polyline_.get()
+  //                        [(b * config_.max_num_polyline * num_point_ + k * num_point_ + p) *
+  //                           num_point_attr_ +
+  //                         d]
+  //                   << " ";
+  //       }
+  //       std::cout << "\n";
+  //     }
+  //   }
+  // }
+
+  // std::cout << "=== Polyline mask ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+  //     std::cout << "  Polyline " << k << ": ";
+  //     for (size_t p = 0; p < num_point_; ++p) {
+  //       std::cout
+  //         << h_debug_in_polyline_mask_.get()[(b * config_.max_num_polyline + k) * num_point_ + p]
+  //         << " ";
+  //     }
+  //     std::cout << "\n";
+  //   }
+  // }
+
+  // std::cout << "=== Polyline center ===\n";
+  // for (size_t b = 0; b < num_target_; ++b) {
+  //   std::cout << "Batch " << b << ":\n";
+  //   for (size_t k = 0; k < config_.max_num_polyline; ++k) {
+  //     std::cout << "  Polyline " << k << ": ";
+  //     for (size_t d = 0; d < 3; ++d) {
+  //       std::cout
+  //         << h_debug_in_polyline_center_.get()[(b * config_.max_num_polyline + k) * num_point_ +
+  //         d]
+  //         << " ";
+  //     }
+  //     std::cout << "\n";
+  //   }
+  // }
+}
+
+void TrtMTR::debugPostprocess()
+{
+  // DEBUG
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_out_score_.get(), d_out_score_.get(), sizeof(float) * num_target_ * config_.num_mode,
+    cudaMemcpyDeviceToHost, stream_));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(
+    h_debug_out_trajectory_.get(), d_out_trajectory_.get(),
+    sizeof(float) * num_target_ * config_.num_mode * config_.num_future * PredictedStateDim,
+    cudaMemcpyDeviceToHost, stream_));
+
+  std::cout << "=== Out score === \n";
+  for (size_t b = 0; b < num_target_; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t m = 0; m < config_.num_mode; ++m) {
+      std::cout << h_debug_out_score_.get()[b * config_.num_mode + m] << " ";
+    }
+    std::cout << "\n";
+  }
+
+  std::cout << "=== Out trajectory === \n";
+  for (size_t b = 0; b < num_target_; ++b) {
+    std::cout << "Batch " << b << ":\n";
+    for (size_t m = 0; m < config_.num_mode; ++m) {
+      std::cout << "  Mode " << m << ":\n";
+      for (size_t t = 0; t < config_.num_future; ++t) {
+        std::cout << "  Time " << t << ": ";
+        for (size_t d = 0; d < PredictedStateDim; ++d) {
+          std::cout << h_debug_out_trajectory_.get()
+                         [(b * config_.num_mode * config_.num_future + m * config_.num_future + t) *
+                            PredictedStateDim +
+                          d]
+                    << " ";
+        }
+        std::cout << "\n";
+      }
+    }
+  }
 }
 }  // namespace mtr
