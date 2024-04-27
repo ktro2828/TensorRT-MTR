@@ -1,0 +1,2 @@
+onnx/mtr_static2x7.onnx filter=lfs diff=lfs merge=lfs -text
+onnx/mtr_dynamic.onnx filter=lfs diff=lfs merge=lfs -text
