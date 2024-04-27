@@ -50,7 +50,7 @@ cmake --build build -j${nproc}
 
 ```shell
 # download onnx.zip
-gh release download onnx
+git lfs pull
 ```
 
 ### Execute
