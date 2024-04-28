@@ -35,7 +35,7 @@ where,
 
 - `M` ...The number of modes
 - `Tf` ...The number of the predicted future frames(=`80`)
-- `Dt` ...The number of the predicted trajectory dimensions(=`7`)
+- `Dt` ...The number of the predicted trajectory dimensions(=`7`) in the order of `(x, y, dx, dy, yaw, vx, cy)`.
 
 ## Build & Run
 
