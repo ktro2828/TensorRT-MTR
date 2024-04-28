@@ -29,9 +29,21 @@ constexpr size_t PredictedStateDim = 7;
  */
 struct PredictedState
 {
-  // TODO(ktro2828): set other values too
   explicit PredictedState(const float * state)
-  : x_(state[0]), y_(state[1]), vx_(state[5]), vy_(state[6])
+  : x_(state[0]),
+    y_(state[1]),
+    dx_(state[2]),
+    dy_(state[3]),
+    yaw_(state[4]),
+    vx_(state[5]),
+    vy_(state[6])
+  {
+  }
+
+  PredictedState(
+    const float x, const float y, const float dx, const float dy, const float yaw, const float vx,
+    const float vy)
+  : x_(x), y_(y), dx_(dx), dy_(dy), yaw_(yaw_), vx_(vx), vy_(vy)
   {
   }
 
@@ -39,11 +51,14 @@ struct PredictedState
 
   float x() const { return x_; }
   float y() const { return y_; }
+  float dx() const { return dx_; }
+  float dy() const { return dy_; }
+  float yaw() const { return yaw_; }
   float vx() const { return vx_; }
   float vy() const { return vy_; }
 
 private:
-  float x_, y_, vx_, vy_;
+  float x_, y_, dx_, dy_, yaw_, vx_, vy_;
 };  // struct PredictedState
 
 /**
