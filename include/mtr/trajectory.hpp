@@ -43,7 +43,7 @@ struct PredictedState
   PredictedState(
     const float x, const float y, const float dx, const float dy, const float yaw, const float vx,
     const float vy)
-  : x_(x), y_(y), dx_(dx), dy_(dy), yaw_(yaw_), vx_(vx), vy_(vy)
+  : x_(x), y_(y), dx_(dx), dy_(dy), yaw_(yaw), vx_(vx), vy_(vy)
   {
   }
 
