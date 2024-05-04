@@ -137,9 +137,6 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
   d_out_score_ = cuda::make_unique<float[]>(num_target_ * config_.num_mode);
   d_out_trajectory_ = cuda::make_unique<float[]>(
     num_target_ * config_.num_mode * config_.num_future * PredictedStateDim);
-  h_out_score_ = std::make_unique<float[]>(sizeof(float) * num_target_ * config_.num_mode);
-  h_out_trajectory_ = std::make_unique<float[]>(
-    sizeof(float) * num_target_ * config_.num_mode * config_.num_future * PredictedStateDim);
 }
 
 bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyline_data)
@@ -207,20 +204,30 @@ bool TrtMTR::postProcess(
     num_target_, config_.num_mode, config_.num_future, num_agent_dim_, d_target_state_.get(),
     PredictedStateDim, d_out_trajectory_.get(), stream_));
 
+  // clear containers on the host device and reserve size for the allocation.
+  h_out_score_.clear();
+  h_out_trajectory_.clear();
+  h_out_score_.reserve(num_target_ * config_.num_mode);
+  h_out_trajectory_.reserve(
+    num_target_ * config_.num_mode * config_.num_future * PredictedStateDim);
+
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_out_score_.get(), d_out_score_.get(), sizeof(float) * num_target_ * config_.num_mode,
+    h_out_score_.data(), d_out_score_.get(), sizeof(float) * num_target_ * config_.num_mode,
     cudaMemcpyDeviceToHost, stream_));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
-    h_out_trajectory_.get(), d_out_trajectory_.get(),
+    h_out_trajectory_.data(), d_out_trajectory_.get(),
     sizeof(float) * num_target_ * config_.num_mode * config_.num_future * PredictedStateDim,
     cudaMemcpyDeviceToHost, stream_));
 
   trajectories.reserve(num_target_);
   for (size_t b = 0; b < num_target_; ++b) {
-    const auto score_ptr = h_out_score_.get() + b * config_.num_mode;
-    const auto trajectory_ptr =
-      h_out_trajectory_.get() + b * config_.num_mode * config_.num_future * PredictedStateDim;
-    trajectories.emplace_back(score_ptr, trajectory_ptr, config_.num_mode, config_.num_future);
+    const auto score_itr = h_out_score_.cbegin() + config_.num_mode;
+    std::vector<float> scores(score_itr, score_itr + config_.num_mode);
+    const auto mode_itr =
+      h_out_trajectory_.cbegin() + b * config_.num_mode * config_.num_future * PredictedStateDim;
+    std::vector<float> modes(
+      mode_itr, mode_itr + config_.num_mode * config_.num_future * PredictedStateDim);
+    trajectories.emplace_back(scores, modes, config_.num_mode, config_.num_future);
   }
 
   return true;
