@@ -151,6 +151,7 @@ private:
 
   std::unique_ptr<MTRBuilder> builder_;
   cudaStream_t stream_{nullptr};
+  cuda::StreamRingBuffer copy_streams_;
 
   IntentionPoint intention_point_;
 

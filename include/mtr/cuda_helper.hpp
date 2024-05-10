@@ -26,6 +26,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 #define CHECK_CUDA_ERROR(e) (cuda::check_error(e, __FILE__, __LINE__))
 
@@ -130,6 +131,43 @@ public:
 private:
   cudaEvent_t start_, stop_;
   bool has_event_{false};
+};
+
+class StreamRingBuffer
+{
+ public:
+  StreamRingBuffer (const size_t buffer_length)
+      : buffer_length_(buffer_length),
+        current_index_(0)
+  {
+    for (size_t i = 0; i < buffer_length_; i++) {
+      cudaStream_t s;
+      CHECK_CUDA_ERROR(cudaStreamCreate(&s));
+      ring_buffer_.push_back(s);
+    }
+  }
+
+  cudaStream_t& operator()(void)
+  {
+    auto& res =  ring_buffer_[current_index_];
+    current_index_++;
+    if (current_index_ >= buffer_length_) {
+      current_index_ = 0;
+    }
+    return res;
+  }
+
+  void SyncAllStreams(void)
+  {
+    for (const auto& s : ring_buffer_) {
+      CHECK_CUDA_ERROR(cudaStreamSynchronize(s));
+    }
+  }
+
+ protected:
+  size_t buffer_length_;
+  size_t current_index_;
+  std::vector<cudaStream_t> ring_buffer_;
 };
 
 }  // namespace cuda
