@@ -20,40 +20,6 @@
 #include <iostream>
 #include <cub/cub.cuh>
 
-namespace
-{
-/**
- * @struct index_and_value_t
- * Utility struct to pass array index and value to CUB API at the same time
- */
-struct index_and_value_t
-{
-  unsigned int idx;
-  float value;
-
-  index_and_value_t() = default;
-  __device__ index_and_value_t(unsigned int i, float val)
-      : idx(i)
-      , value(val)
-  {}
-};
-
-static __device__ bool operator==(const index_and_value_t& lhs, const index_and_value_t& rhs)
-{
-  return lhs.value == rhs.value;
-}
-
-struct decomposer_t
-{
-  __device__ ::cuda::std::tuple<float&> operator()(index_and_value_t& key) const
-  {
-    // The leftmost element of the tuple is considered the most significant
-    // Only `value` member will be returned because it only the member to be used for sort
-    return {key.value};
-  }
-};
-}
-
 __global__ void transformPolylineKernel(
   const int K, const int P, const int PointDim, const float * inPolyline, const int B,
   const int AgentDim, const float * targetState, float * outPolyline, bool * outPolylineMask)
@@ -178,21 +144,22 @@ __global__ void extractTopKPolylineKernel(
   // }
 
   // Specialize BlockRadixSort type
-  using BlockRadixSortT = cub::BlockRadixSort<index_and_value_t, BLOCK_THREADS, ITEMS_PER_THREAD>;
+  using BlockRadixSortT = cub::BlockRadixSort<float, BLOCK_THREADS, ITEMS_PER_THREAD, unsigned int>;
   using TempStorageT = typename BlockRadixSortT::TempStorage;
 
   __shared__ TempStorageT temp_storage;
 
-  index_and_value_t distances[ITEMS_PER_THREAD];
+  float distances[ITEMS_PER_THREAD] = {0};
+  unsigned int distance_indices[ITEMS_PER_THREAD] = {0};
   for (unsigned int i = 0; i < ITEMS_PER_THREAD; i++) {
     int polyline_idx = BLOCK_THREADS * i + tid; // index order don't need to care.
     int distance_idx = b * L + polyline_idx;
-    distances[i].idx = polyline_idx;
-    distances[i].value = (polyline_idx < L && distance_idx < B * L)
-                         ? inDistance[distance_idx] : FLT_MAX;
+    distance_indices[i] = polyline_idx;
+    distances[i] = (polyline_idx < L && distance_idx < B * L)
+                   ? inDistance[distance_idx] : FLT_MAX;
   }
 
-  BlockRadixSortT(temp_storage).Sort(distances, decomposer_t{});
+  BlockRadixSortT(temp_storage).Sort(distances, distance_indices);
   // Block-wide sync barrier necessary to refer the sort result
   __syncthreads();
 
@@ -202,9 +169,9 @@ __global__ void extractTopKPolylineKernel(
 
   for (unsigned int i = 0;  i < ITEMS_PER_THREAD; i++) {
     int consective_polyline_idx = tid * ITEMS_PER_THREAD + i;  // To keep sorted order, theads have to write consective region
-    int inIdx = b * L * P + distances[i].idx * P + p;
+    int inIdx = b * L * P + distance_indices[i] * P + p;
     int outIdx = b * K * P + consective_polyline_idx * P + p;
-    if (consective_polyline_idx >= K || fabsf(FLT_MAX - distances[i].value) < FLT_EPSILON) {
+    if (consective_polyline_idx >= K || fabsf(FLT_MAX - distances[i]) < FLT_EPSILON) {
       continue;
     }
     outPolyline[outIdx * D + d] = inPolyline[inIdx * D + d];
