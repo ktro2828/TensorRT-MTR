@@ -244,7 +244,7 @@ cudaError_t polylinePreprocessWithTopkLauncher(
               << threadsPerBlock * itemsPerThread << ") detected." << std::endl;
     return cudaError_t::cudaErrorInvalidValue;
   }
-  extractTopKPolylineKernel<threadsPerBlock, itemsPerThread><<<blocks3, threadsPerBlock>>>(
+  extractTopKPolylineKernel<threadsPerBlock, itemsPerThread><<<blocks3, threadsPerBlock, 0, stream>>>(
     K, B, L, P, outPointDim, tmpPolyline, tmpPolylineMask, tmpDistance, outPolyline,
     outPolylineMask);
 
