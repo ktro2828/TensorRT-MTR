@@ -157,7 +157,7 @@ class StreamRingBuffer
     return res;
   }
 
-  void SyncAllStreams(void)
+  void syncAllStreams(void)
   {
     for (const auto& s : ring_buffer_) {
       CHECK_CUDA_ERROR(cudaStreamSynchronize(s));

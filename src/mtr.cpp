@@ -170,7 +170,7 @@ bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyl
     copy_streams_()));
 
   // Wait until all memory copy have been done
-  copy_streams_.SyncAllStreams();
+  copy_streams_.syncAllStreams();
 
   // DEBUG
   event_debugger_.createEvent(stream_);
