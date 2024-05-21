@@ -18,6 +18,7 @@
 #include <float.h>
 
 #include <iostream>
+#include <cub/cub.cuh>
 
 __global__ void transformPolylineKernel(
   const int K, const int P, const int PointDim, const float * inPolyline, const int B,
@@ -127,51 +128,54 @@ __global__ void calculateCenterDistanceKernel(
   distance[b * K + k] = hypot(centerX, centerY);
 }
 
+template <unsigned int BLOCK_THREADS, unsigned int ITEMS_PER_THREAD>
 __global__ void extractTopKPolylineKernel(
   const int K, const int B, const int L, const int P, const int D, const float * inPolyline,
   const bool * inPolylineMask, const float * inDistance, float * outPolyline,
   bool * outPolylineMask)
 {
   int b = blockIdx.x;                             // Batch index
-  int tid = threadIdx.x;                          // Polyline index
+  int tid = threadIdx.x;                          // Thread local index in this CUDA block
   int p = blockIdx.y * blockDim.y + threadIdx.y;  // Point index
   int d = blockIdx.z * blockDim.z + threadIdx.z;  // Dim index
+  // Since all threads in a block expected to work wiht CUB, `return` shold not be called here
+  // if (b >= B || tid >= L || p >= P || d >= D) {
+  //   return;
+  // }
+
+  // Specialize BlockRadixSort type
+  using BlockRadixSortT = cub::BlockRadixSort<float, BLOCK_THREADS, ITEMS_PER_THREAD, unsigned int>;
+  using TempStorageT = typename BlockRadixSortT::TempStorage;
+
+  __shared__ TempStorageT temp_storage;
+
+  float distances[ITEMS_PER_THREAD] = {0};
+  unsigned int distance_indices[ITEMS_PER_THREAD] = {0};
+  for (unsigned int i = 0; i < ITEMS_PER_THREAD; i++) {
+    int polyline_idx = BLOCK_THREADS * i + tid; // index order don't need to care.
+    int distance_idx = b * L + polyline_idx;
+    distance_indices[i] = polyline_idx;
+    distances[i] = (polyline_idx < L && distance_idx < B * L)
+                   ? inDistance[distance_idx] : FLT_MAX;
+  }
+
+  BlockRadixSortT(temp_storage).Sort(distances, distance_indices);
+  // Block-wide sync barrier necessary to refer the sort result
+  __syncthreads();
+
   if (b >= B || tid >= L || p >= P || d >= D) {
     return;
   }
-  extern __shared__ float distances[];
 
-  // Load distances into shared memory
-  if (tid < L) {
-    distances[tid] = inDistance[b * L + tid];
-  }
-  __syncthreads();
-
-  // Simple selection of the smallest K distances
-  // (this part should be replaced with a more efficient sorting/selecting algorithm)
-  for (int k = 0; k < K; k++) {
-    float minDistance = FLT_MAX;
-    int minIndex = -1;
-
-    for (int l = 0; l < L; l++) {
-      if (distances[l] < minDistance) {
-        minDistance = distances[l];
-        minIndex = l;
-      }
-    }
-    __syncthreads();
-
-    if (minIndex == -1) {
+  for (unsigned int i = 0;  i < ITEMS_PER_THREAD; i++) {
+    int consective_polyline_idx = tid * ITEMS_PER_THREAD + i;  // To keep sorted order, theads have to write consective region
+    int inIdx = b * L * P + distance_indices[i] * P + p;
+    int outIdx = b * K * P + consective_polyline_idx * P + p;
+    if (consective_polyline_idx >= K || fabsf(FLT_MAX - distances[i]) < FLT_EPSILON) {
       continue;
     }
-
-    if (tid == k) {  // this thread will handle copying the k-th smallest polyline
-      int inIdx = b * L * P + minIndex * P + p;
-      int outIdx = b * K * P + k * P + p;
-      outPolyline[outIdx * D + d] = inPolyline[inIdx * D + d];
-      outPolylineMask[outIdx] = inPolylineMask[inIdx];
-    }
-    distances[minIndex] = FLT_MAX;  // exclude this index from future consideration
+    outPolyline[outIdx * D + d] = inPolyline[inIdx * D + d];
+    outPolylineMask[outIdx] = inPolylineMask[inIdx];
   }
 }
 
@@ -234,8 +238,13 @@ cudaError_t polylinePreprocessWithTopkLauncher(
     B, L, P, outPointDim, tmpPolyline, tmpPolylineMask, tmpDistance);
 
   const dim3 blocks3(B, P, outPointDim);
-  const size_t sharedMemSize = sizeof(float) * L;
-  extractTopKPolylineKernel<<<blocks3, threadsPerBlock, sharedMemSize, stream>>>(
+  constexpr unsigned int itemsPerThread = 24;
+  if (threadsPerBlock * itemsPerThread < L) {
+    std::cerr << "Larger L (" << L << ") than acceptable range (< "
+              << threadsPerBlock * itemsPerThread << ") detected." << std::endl;
+    return cudaError_t::cudaErrorInvalidValue;
+  }
+  extractTopKPolylineKernel<threadsPerBlock, itemsPerThread><<<blocks3, threadsPerBlock, 0, stream>>>(
     K, B, L, P, outPointDim, tmpPolyline, tmpPolylineMask, tmpDistance, outPolyline,
     outPolylineMask);
 

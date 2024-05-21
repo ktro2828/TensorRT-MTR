@@ -24,7 +24,8 @@ TrtMTR::TrtMTR(
   const std::string & model_path, const MTRConfig & config, const BuildConfig & build_config,
   const size_t max_workspace_size)
 : config_(config),
-  intention_point_(config_.intention_point_filepath, config_.num_intention_point_cluster)
+  intention_point_(config_.intention_point_filepath, config_.num_intention_point_cluster),
+  copy_streams_(7)  // 7 is the maximum number of consecutive memory copy in this class
 {
   builder_ = std::make_unique<MTRBuilder>(model_path, build_config, max_workspace_size);
   builder_->setup();
@@ -143,30 +144,33 @@ bool TrtMTR::preProcess(const AgentData & agent_data, const PolylineData & polyl
 {
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_target_index_.get(), agent_data.target_indices().data(), sizeof(int) * num_target_,
-    cudaMemcpyHostToDevice, stream_));
+    cudaMemcpyHostToDevice, copy_streams_()));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_label_index_.get(), agent_data.label_indices().data(), sizeof(int) * num_agent_,
-    cudaMemcpyHostToDevice, stream_));
+    cudaMemcpyHostToDevice, copy_streams_()));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_timestamps_.get(), agent_data.timestamps().data(), sizeof(float) * num_timestamp_,
-    cudaMemcpyHostToDevice, stream_));
+    cudaMemcpyHostToDevice, copy_streams_()));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_trajectory_.get(), agent_data.data_ptr(), sizeof(float) * agent_data.size(),
-    cudaMemcpyHostToDevice, stream_));
+    cudaMemcpyHostToDevice, copy_streams_()));
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_target_state_.get(), agent_data.target_data_ptr(),
-    sizeof(float) * num_target_ * num_agent_dim_, cudaMemcpyHostToDevice, stream_));
+    sizeof(float) * num_target_ * num_agent_dim_, cudaMemcpyHostToDevice, copy_streams_()));
 
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_polyline_.get(), polyline_data.data_ptr(), sizeof(float) * polyline_data.size(),
-    cudaMemcpyHostToDevice, stream_));
+    cudaMemcpyHostToDevice, copy_streams_()));
 
   const auto target_label_names = getLabelNames(agent_data.target_label_indices());
   const auto intention_points = intention_point_.get_points(target_label_names);
   CHECK_CUDA_ERROR(cudaMemcpyAsync(
     d_intention_points_.get(), intention_points.data(),
     sizeof(float) * num_target_ * config_.num_intention_point_cluster * 2, cudaMemcpyHostToDevice,
-    stream_));
+    copy_streams_()));
+
+  // Wait until all memory copy have been done
+  copy_streams_.syncAllStreams();
 
   // DEBUG
   event_debugger_.createEvent(stream_);
