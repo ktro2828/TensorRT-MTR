@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.14)
 project(trt_mtr)
 
+# -------- default to C++17 --------
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
+# -------- create compile_commands.json --------
+if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 # For CUDA
 find_package(CUDA REQUIRED)
 if(CUDA_FOUND)
