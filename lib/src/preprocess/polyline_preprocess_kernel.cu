@@ -15,10 +15,11 @@
 #include "mtr/cuda_helper.hpp"
 #include "preprocess/polyline_preprocess_kernel.cuh"
 
+#include <cub/cub.cuh>
+
 #include <float.h>
 
 #include <iostream>
-#include <cub/cub.cuh>
 
 __global__ void transformPolylineKernel(
   const int K, const int P, const int PointDim, const float * inPolyline, const int B,
@@ -152,11 +153,10 @@ __global__ void extractTopKPolylineKernel(
   float distances[ITEMS_PER_THREAD] = {0};
   unsigned int distance_indices[ITEMS_PER_THREAD] = {0};
   for (unsigned int i = 0; i < ITEMS_PER_THREAD; i++) {
-    int polyline_idx = BLOCK_THREADS * i + tid; // index order don't need to care.
+    int polyline_idx = BLOCK_THREADS * i + tid;  // index order don't need to care.
     int distance_idx = b * L + polyline_idx;
     distance_indices[i] = polyline_idx;
-    distances[i] = (polyline_idx < L && distance_idx < B * L)
-                   ? inDistance[distance_idx] : FLT_MAX;
+    distances[i] = (polyline_idx < L && distance_idx < B * L) ? inDistance[distance_idx] : FLT_MAX;
   }
 
   BlockRadixSortT(temp_storage).Sort(distances, distance_indices);
@@ -167,8 +167,9 @@ __global__ void extractTopKPolylineKernel(
     return;
   }
 
-  for (unsigned int i = 0;  i < ITEMS_PER_THREAD; i++) {
-    int consective_polyline_idx = tid * ITEMS_PER_THREAD + i;  // To keep sorted order, theads have to write consective region
+  for (unsigned int i = 0; i < ITEMS_PER_THREAD; i++) {
+    int consective_polyline_idx =
+      tid * ITEMS_PER_THREAD + i;  // To keep sorted order, theads have to write consective region
     int inIdx = b * L * P + distance_indices[i] * P + p;
     int outIdx = b * K * P + consective_polyline_idx * P + p;
     if (consective_polyline_idx >= K || fabsf(FLT_MAX - distances[i]) < FLT_EPSILON) {
@@ -244,9 +245,10 @@ cudaError_t polylinePreprocessWithTopkLauncher(
               << threadsPerBlock * itemsPerThread << ") detected." << std::endl;
     return cudaError_t::cudaErrorInvalidValue;
   }
-  extractTopKPolylineKernel<threadsPerBlock, itemsPerThread><<<blocks3, threadsPerBlock, 0, stream>>>(
-    K, B, L, P, outPointDim, tmpPolyline, tmpPolylineMask, tmpDistance, outPolyline,
-    outPolylineMask);
+  extractTopKPolylineKernel<threadsPerBlock, itemsPerThread>
+    <<<blocks3, threadsPerBlock, 0, stream>>>(
+      K, B, L, P, outPointDim, tmpPolyline, tmpPolylineMask, tmpDistance, outPolyline,
+      outPolylineMask);
 
   const dim3 blocks4(B, K, P);
   setPreviousPositionKernel<<<blocks4, threadsPerBlock, 0, stream>>>(

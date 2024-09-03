@@ -135,10 +135,8 @@ private:
 
 class StreamRingBuffer
 {
- public:
-  StreamRingBuffer (const size_t buffer_length)
-      : buffer_length_(buffer_length),
-        current_index_(0)
+public:
+  StreamRingBuffer(const size_t buffer_length) : buffer_length_(buffer_length), current_index_(0)
   {
     for (size_t i = 0; i < buffer_length_; i++) {
       cudaStream_t s;
@@ -147,9 +145,9 @@ class StreamRingBuffer
     }
   }
 
-  cudaStream_t& operator()(void)
+  cudaStream_t & operator()(void)
   {
-    auto& res =  ring_buffer_[current_index_];
+    auto & res = ring_buffer_[current_index_];
     current_index_++;
     if (current_index_ >= buffer_length_) {
       current_index_ = 0;
@@ -159,12 +157,12 @@ class StreamRingBuffer
 
   void syncAllStreams(void)
   {
-    for (const auto& s : ring_buffer_) {
+    for (const auto & s : ring_buffer_) {
       CHECK_CUDA_ERROR(cudaStreamSynchronize(s));
     }
   }
 
- protected:
+protected:
   size_t buffer_length_;
   size_t current_index_;
   std::vector<cudaStream_t> ring_buffer_;
