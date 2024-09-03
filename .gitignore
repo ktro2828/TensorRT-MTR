@@ -35,3 +35,4 @@
 build
 *.onnx
 *.engine
+.cache

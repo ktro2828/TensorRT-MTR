@@ -42,8 +42,7 @@ where,
 ### Build
 
 ```shell
-cmake -B build
-cmake --build build -j${nproc}
+cmake -B build && cmake --build build -j${nproc}
 ```
 
 ### Download onnx
@@ -55,12 +54,29 @@ git lfs pull
 
 ### Execute
 
+- With `trtexec`
+
 ```shell
 # with trtexec
-<PATH_TO_TRTEXEC_BIN>/trtexec --onnx=<PATH_TO_ONNX> --staticPlugins=./build/libcustom_plugin.so
+<PATH_TO_TRTEXEC_BIN>/trtexec --onnx=<PATH_TO_ONNX> --staticPlugins=./build/libtrtmtr_plugin.so
+```
 
-# main
-./build/main <PATH_TO_ONNX_OR_ENGINE> [--dynamic --fp16 -n <NUM_REPEAT>]
+- With `executable`
+
+Fist, please install `trtmtr` with `cmake --install <DIR>`:
+
+```shell
+sudo cmake --install build
+```
+
+> [!NOTE]
+> Note that, `$LD_LIBRARY_PATH` includes `/usr/local/lib`.  
+> If not, append `export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"` to your `.bashrc`.
+
+Then, run the following command:
+
+```shell
+trtmtr <PATH_TO_ONNX_OR_ENGINE> [--dynamic --fp16 -n <NUM_REPEAT>]
 ```
 
 ### Unittest

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(trt_mtr)
+project(trtmtr)
 
 # -------- default to C++17 --------
 if(NOT CMAKE_CXX_STANDARD)
@@ -43,42 +43,48 @@ endforeach()
 
 # -------- link targets for custom tensorrt plugins --------
 file(GLOB_RECURSE CUSTOM_PLUGIN_FILES lib/src/attention/* lib/src/knn/*)
-cuda_add_library(custom_plugin SHARED ${CUSTOM_PLUGIN_FILES})
-target_link_libraries(custom_plugin
+cuda_add_library(${PROJECT_NAME}_plugin SHARED ${CUSTOM_PLUGIN_FILES})
+target_link_libraries(${PROJECT_NAME}_plugin
     ${TRT_PLUGINS}
     ${TRT_PLUGIN_LIBS}
     ${CUDA_LIBRARIES}
     ${CUBLAS_LIBRARIES}
     ${CUDNN_LIBRARIES})
-target_include_directories(custom_plugin PUBLIC
+target_include_directories(${PROJECT_NAME}_plugin PUBLIC
   lib/include
 )
 
 # -------- link targets for custom preprocess/postprocess kernels --------
 file(GLOB_RECURSE CUSTOM_KERNEL_FILES lib/src/preprocess/* lib/src/postprocess/*)
-cuda_add_library(custom_kernel SHARED ${CUSTOM_KERNEL_FILES})
-target_link_libraries(custom_kernel
+cuda_add_library(${PROJECT_NAME}_kernel SHARED ${CUSTOM_KERNEL_FILES})
+target_link_libraries(${PROJECT_NAME}_kernel
   ${CUDA_LIBRARIES}
   ${CUBLAS_LIBRARIES}
   ${CUDNN_LIBRARIES})
-target_include_directories(custom_kernel PUBLIC
+target_include_directories(${PROJECT_NAME}_kernel PUBLIC
   lib/include
   ${PROJECT_SOURCE_DIR}/include
 )
 
 # -------- link targets for mtr --------
-add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
-target_link_libraries(trt_mtr custom_plugin custom_kernel)
-target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
+add_library(${PROJECT_NAME}_lib SHARED src/mtr.cpp src/builder.cpp)
+target_link_libraries(${PROJECT_NAME}_lib ${PROJECT_NAME}_plugin ${PROJECT_NAME}_kernel)
+target_include_directories(${PROJECT_NAME}_lib PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 # -------- add executable --------
-add_executable(main src/main.cpp)
-target_link_libraries(main PUBLIC trt_mtr)
+add_executable(${PROJECT_NAME} src/main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
+
+# -------- install --------
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+install(TARGETS ${PROJECT_NAME}_lib)
+install(TARGETS ${PROJECT_NAME}_plugin)
+install(TARGETS ${PROJECT_NAME}_kernel)
 
 # -------- for testing --------
 add_executable(test_agent test/agent_test.cpp)
 add_executable(test_polyline test/polyline_test.cpp)
 add_executable(test_intention_point test/intention_point_test.cpp)
-target_include_directories(test_agent PUBLIC include)
-target_include_directories(test_polyline PUBLIC include)
-target_include_directories(test_intention_point PUBLIC include)
+target_include_directories(test_agent PRIVATE include)
+target_include_directories(test_polyline PRIVATE include)
+target_include_directories(test_intention_point PRIVATE include)
