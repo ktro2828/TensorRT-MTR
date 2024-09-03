@@ -16,6 +16,7 @@
 #define MTR__TRAJECTORY_HPP_
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <vector>
 
