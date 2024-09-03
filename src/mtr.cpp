@@ -18,6 +18,8 @@
 #include "preprocess/agent_preprocess_kernel.cuh"
 #include "preprocess/polyline_preprocess_kernel.cuh"
 
+#include <cstdint>
+
 namespace mtr
 {
 TrtMTR::TrtMTR(
@@ -116,12 +118,15 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
     builder_->setBindingDimensions(1, nvinfer1::Dims3{num_target_, num_agent_, num_timestamp_});
     // polylines
     builder_->setBindingDimensions(
-      2, nvinfer1::Dims4{num_target_, config_.max_num_polyline, num_point_, num_point_attr_});
+      2,
+      nvinfer1::Dims4{
+        num_target_, static_cast<int32_t>(config_.max_num_polyline), num_point_, num_point_attr_});
     // polyline mask
     builder_->setBindingDimensions(
-      3, nvinfer1::Dims3{num_target_, config_.max_num_polyline, num_point_});
+      3, nvinfer1::Dims3{num_target_, static_cast<int32_t>(config_.max_num_polyline), num_point_});
     // polyline center
-    builder_->setBindingDimensions(4, nvinfer1::Dims3{num_target_, config_.max_num_polyline, 3});
+    builder_->setBindingDimensions(
+      4, nvinfer1::Dims3{num_target_, static_cast<int32_t>(config_.max_num_polyline), 3});
     // obj last pos
     builder_->setBindingDimensions(5, nvinfer1::Dims3{num_target_, num_agent_, 3});
     // track index to predict
@@ -131,7 +136,8 @@ void TrtMTR::initCudaPtr(const AgentData & agent_data, const PolylineData & poly
     builder_->setBindingDimensions(6, targetIdxDim);
     // intention points
     builder_->setBindingDimensions(
-      7, nvinfer1::Dims3{num_target_, config_.num_intention_point_cluster, 2});
+      7,
+      nvinfer1::Dims3{num_target_, static_cast<int32_t>(config_.num_intention_point_cluster), 2});
   }
 
   // outputs
