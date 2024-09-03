@@ -12,7 +12,7 @@ if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-# For CUDA
+# -------- find cuda libraries --------
 find_package(CUDA REQUIRED)
 if(CUDA_FOUND)
   message("Cuda version: " ${CUDA_VERSION})
@@ -31,7 +31,7 @@ else()
   message(FATAL_ERROR "Can not find CUDA")
 endif()
 
-# For TensorRT
+# -------- find tensorrt libraries --------
 list(APPEND TRT_PLUGINS "nvinfer")
 list(APPEND TRT_PLUGINS "nvonnxparser")
 list(APPEND TRT_PLUGINS "nvparsers")
@@ -41,7 +41,7 @@ foreach(libName ${TRT_PLUGINS})
   list(APPEND TRT_PLUGIN_LIBS ${${libName}_lib})
 endforeach()
 
-# TRT plugins
+# -------- link targets for custom tensorrt plugins --------
 file(GLOB_RECURSE CUSTOM_PLUGIN_FILES lib/src/attention/* lib/src/knn/*)
 cuda_add_library(custom_plugin SHARED ${CUSTOM_PLUGIN_FILES})
 target_link_libraries(custom_plugin
@@ -54,7 +54,7 @@ target_include_directories(custom_plugin PUBLIC
   lib/include
 )
 
-# preprocess and postprocess kernels
+# -------- link targets for custom preprocess/postprocess kernels --------
 file(GLOB_RECURSE CUSTOM_KERNEL_FILES lib/src/preprocess/* lib/src/postprocess/*)
 cuda_add_library(custom_kernel SHARED ${CUSTOM_KERNEL_FILES})
 target_link_libraries(custom_kernel
@@ -66,15 +66,16 @@ target_include_directories(custom_kernel PUBLIC
   ${PROJECT_SOURCE_DIR}/include
 )
 
-# MTR
+# -------- link targets for mtr --------
 add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
 target_link_libraries(trt_mtr custom_plugin custom_kernel)
 target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
+# -------- add executable --------
 add_executable(main src/main.cpp)
 target_link_libraries(main PUBLIC trt_mtr)
 
-# unittest
+# -------- for testing --------
 add_executable(test_agent test/agent_test.cpp)
 add_executable(test_polyline test/polyline_test.cpp)
 add_executable(test_intention_point test/intention_point_test.cpp)
