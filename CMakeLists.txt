@@ -31,16 +31,8 @@ foreach(libName ${TRT_PLUGINS})
 endforeach()
 
 # TRT plugins
-cuda_add_library(custom_plugin SHARED
-  lib/src/attention/trt_attn_value_computation_kernel.cu
-  lib/src/attention/trt_attn_value_computation.cpp
-  lib/src/attention/trt_attn_weight_computation_kernel.cu
-  lib/src/attention/trt_attn_weight_computation.cpp
-  lib/src/knn/trt_knn_batch_kernel.cu
-  lib/src/knn/trt_knn_batch.cpp
-  lib/src/knn/trt_knn_batch_mlogk_kernel.cu
-  lib/src/knn/trt_knn_batch_mlogk.cpp
-)
+file(GLOB_RECURSE CUSTOM_PLUGIN_FILES lib/src/attention/* lib/src/knn/*)
+cuda_add_library(custom_plugin SHARED ${CUSTOM_PLUGIN_FILES})
 target_link_libraries(custom_plugin
     ${TRT_PLUGINS}
     ${TRT_PLUGIN_LIBS}
@@ -52,11 +44,8 @@ target_include_directories(custom_plugin PUBLIC
 )
 
 # preprocess and postprocess kernels
-cuda_add_library(custom_kernel SHARED
-  lib/src/preprocess/agent_preprocess_kernel.cu
-  lib/src/preprocess/polyline_preprocess_kernel.cu
-  lib/src/postprocess/postprocess_kernel.cu
-)
+file(GLOB_RECURSE CUSTOM_KERNEL_FILES lib/src/preprocess/* lib/src/postprocess/*)
+cuda_add_library(custom_kernel SHARED ${CUSTOM_KERNEL_FILES})
 target_link_libraries(custom_kernel
   ${CUDA_LIBRARIES}
   ${CUBLAS_LIBRARIES}
