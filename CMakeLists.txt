@@ -1,7 +1,18 @@
 cmake_minimum_required(VERSION 3.14)
-project(trt_mtr)
+project(trtmtr)
 
-# For CUDA
+# -------- default to C++17 --------
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
+# -------- create compile_commands.json --------
+if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
+# -------- find cuda libraries --------
 find_package(CUDA REQUIRED)
 if(CUDA_FOUND)
   message("Cuda version: " ${CUDA_VERSION})
@@ -20,7 +31,7 @@ else()
   message(FATAL_ERROR "Can not find CUDA")
 endif()
 
-# For TensorRT
+# -------- find tensorrt libraries --------
 list(APPEND TRT_PLUGINS "nvinfer")
 list(APPEND TRT_PLUGINS "nvonnxparser")
 list(APPEND TRT_PLUGINS "nvparsers")
@@ -30,54 +41,50 @@ foreach(libName ${TRT_PLUGINS})
   list(APPEND TRT_PLUGIN_LIBS ${${libName}_lib})
 endforeach()
 
-# TRT plugins
-cuda_add_library(custom_plugin SHARED
-  lib/src/attention/trt_attn_value_computation_kernel.cu
-  lib/src/attention/trt_attn_value_computation.cpp
-  lib/src/attention/trt_attn_weight_computation_kernel.cu
-  lib/src/attention/trt_attn_weight_computation.cpp
-  lib/src/knn/trt_knn_batch_kernel.cu
-  lib/src/knn/trt_knn_batch.cpp
-  lib/src/knn/trt_knn_batch_mlogk_kernel.cu
-  lib/src/knn/trt_knn_batch_mlogk.cpp
-)
-target_link_libraries(custom_plugin
+# -------- link targets for custom tensorrt plugins --------
+file(GLOB_RECURSE CUSTOM_PLUGIN_FILES lib/src/attention/* lib/src/knn/*)
+cuda_add_library(${PROJECT_NAME}_plugin SHARED ${CUSTOM_PLUGIN_FILES})
+target_link_libraries(${PROJECT_NAME}_plugin
     ${TRT_PLUGINS}
     ${TRT_PLUGIN_LIBS}
     ${CUDA_LIBRARIES}
     ${CUBLAS_LIBRARIES}
     ${CUDNN_LIBRARIES})
-target_include_directories(custom_plugin PUBLIC
+target_include_directories(${PROJECT_NAME}_plugin PUBLIC
   lib/include
 )
 
-# preprocess and postprocess kernels
-cuda_add_library(custom_kernel SHARED
-  lib/src/preprocess/agent_preprocess_kernel.cu
-  lib/src/preprocess/polyline_preprocess_kernel.cu
-  lib/src/postprocess/postprocess_kernel.cu
-)
-target_link_libraries(custom_kernel
+# -------- link targets for custom preprocess/postprocess kernels --------
+file(GLOB_RECURSE CUSTOM_KERNEL_FILES lib/src/preprocess/* lib/src/postprocess/*)
+cuda_add_library(${PROJECT_NAME}_kernel SHARED ${CUSTOM_KERNEL_FILES})
+target_link_libraries(${PROJECT_NAME}_kernel
   ${CUDA_LIBRARIES}
   ${CUBLAS_LIBRARIES}
   ${CUDNN_LIBRARIES})
-target_include_directories(custom_kernel PUBLIC
+target_include_directories(${PROJECT_NAME}_kernel PUBLIC
   lib/include
   ${PROJECT_SOURCE_DIR}/include
 )
 
-# MTR
-add_library(trt_mtr SHARED src/mtr.cpp src/builder.cpp)
-target_link_libraries(trt_mtr custom_plugin custom_kernel)
-target_include_directories(trt_mtr PUBLIC ${PROJECT_SOURCE_DIR}/include)
+# -------- link targets for mtr --------
+add_library(${PROJECT_NAME}_lib SHARED src/mtr.cpp src/builder.cpp)
+target_link_libraries(${PROJECT_NAME}_lib ${PROJECT_NAME}_plugin ${PROJECT_NAME}_kernel)
+target_include_directories(${PROJECT_NAME}_lib PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
-add_executable(main src/main.cpp)
-target_link_libraries(main PUBLIC trt_mtr)
+# -------- add executable --------
+add_executable(${PROJECT_NAME} src/main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 
-# unittest
+# -------- install --------
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+install(TARGETS ${PROJECT_NAME}_lib)
+install(TARGETS ${PROJECT_NAME}_plugin)
+install(TARGETS ${PROJECT_NAME}_kernel)
+
+# -------- for testing --------
 add_executable(test_agent test/agent_test.cpp)
 add_executable(test_polyline test/polyline_test.cpp)
 add_executable(test_intention_point test/intention_point_test.cpp)
-target_include_directories(test_agent PUBLIC include)
-target_include_directories(test_polyline PUBLIC include)
-target_include_directories(test_intention_point PUBLIC include)
+target_include_directories(test_agent PRIVATE include)
+target_include_directories(test_polyline PRIVATE include)
+target_include_directories(test_intention_point PRIVATE include)
