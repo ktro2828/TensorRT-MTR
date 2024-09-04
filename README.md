@@ -39,17 +39,17 @@ where,
 
 ## Build & Run
 
-### Build
-
-```shell
-cmake -B build && cmake --build build -j${nproc}
-```
-
 ### Download onnx
 
 ```shell
 # download onnx.zip
 git lfs pull
+```
+
+### Build
+
+```shell
+cmake -B build && cmake --build build -j${nproc}
 ```
 
 ### Execute
