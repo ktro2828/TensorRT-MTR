@@ -36,3 +36,4 @@ build
 *.onnx
 *.engine
 .cache
+*.zip

@@ -43,7 +43,7 @@ where,
 
 ```shell
 # download onnx.zip
-git lfs pull
+gh release download onnx
 ```
 
 ### Build
