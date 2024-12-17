@@ -56,7 +56,6 @@ __global__ void transformPolylineKernel(
     const float dx = inPolyline[inIdx + 3];
     const float dy = inPolyline[inIdx + 4];
     const float dz = inPolyline[inIdx + 5];
-    const float typeID = inPolyline[inIdx + 6];
 
     const int centerIdx = b * AgentDim;
     const float centerX = targetState[centerIdx];
@@ -80,7 +79,6 @@ __global__ void transformPolylineKernel(
     outPolyline[outIdx * (PointDim + 2) + 3] = transDx;
     outPolyline[outIdx * (PointDim + 2) + 4] = transDy;
     outPolyline[outIdx * (PointDim + 2) + 5] = transDz;
-    outPolyline[outIdx * (PointDim + 2) + 6] = typeID;
   }
 }
 

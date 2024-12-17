@@ -22,9 +22,7 @@
 
 namespace mtr
 {
-constexpr std::size_t PointStateDim = 7;
-
-enum PolylineLabel { LANE = 0, ROAD_LINE = 1, ROAD_EDGE = 2, CROSSWALK = 3 };
+constexpr std::size_t PointStateDim = 6;
 
 struct LanePoint
 {
@@ -42,12 +40,10 @@ struct LanePoint
    * @param dx Normalized delta x.
    * @param dy Normalized delta y.
    * @param dz Normalized delta z.
-   * @param label Label.
    */
   LanePoint(
-    const float x, const float y, const float z, const float dx, const float dy, const float dz,
-    const float label)
-  : data_({x, y, z, dx, dy, dz, label}), x_(x), y_(y), z_(z), label_(label)
+    const float x, const float y, const float z, const float dx, const float dy, const float dz)
+  : data_({x, y, z, dx, dy, dz}), x_(x), y_(y), z_(z)
   {
   }
 
@@ -73,13 +69,6 @@ struct LanePoint
    * @return float The z position.
    */
   float z() const { return z_; }
-
-  /**
-   * @brief Return the label of the point.
-   *
-   * @return float The label.
-   */
-  float label() const { return label_; }
 
   /**
    * @brief Return the distance between myself and another one.
@@ -108,7 +97,7 @@ struct LanePoint
 
 private:
   std::array<float, dim> data_;
-  float x_, y_, z_, label_;
+  float x_, y_, z_;
 };
 
 struct PolylineData
@@ -144,8 +133,7 @@ struct PolylineData
       if (point_cnt >= num_point_) {
         addNewPolyline(cur_point, point_cnt);
       } else if (const auto & prev_point = points.at(i - 1);
-                 cur_point.distance(prev_point) >= distance_threshold_ ||
-                 cur_point.label() != prev_point.label()) {
+                 cur_point.distance(prev_point) >= distance_threshold_) {
         if (point_cnt < num_point_) {
           addEmptyPoints(point_cnt);
         }

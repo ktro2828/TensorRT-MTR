@@ -120,7 +120,7 @@ mtr::PolylineData loadPolylineData(const size_t K, const size_t P, const float t
   while (!file.eof()) {
     float x, y, z, dx, dy, dz, label;
     file >> x >> y >> z >> dx >> dy >> dz >> label;
-    points.emplace_back(x, y, z, dx, dy, dz, label);
+    points.emplace_back(x, y, z, dx, dy, dz);
   }
   file.close();
   return mtr::PolylineData(points, K, P, threshold);

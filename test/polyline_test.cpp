@@ -12,14 +12,14 @@ void test_case1()
   constexpr int N = 10;
   constexpr int K = 20;
   constexpr int P = 5;
-  constexpr int D = 7;
+  constexpr int D = 6;
 
   float src_points[N][D] = {
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
-    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
+    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f},
+    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f},
+    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f},
   };
 
   std::vector<mtr::LanePoint> points;
@@ -32,8 +32,7 @@ void test_case1()
     auto dx = src_points[n][3];
     auto dy = src_points[n][4];
     auto dz = src_points[n][5];
-    auto label = src_points[n][6];
-    mtr::LanePoint point(x, y, z, dx, dy, dz, label);
+    mtr::LanePoint point(x, y, z, dx, dy, dz);
     points.emplace_back(point);
   }
 
@@ -65,14 +64,14 @@ void test_case2()
   constexpr int N = 10;
   constexpr int K = 3;
   constexpr int P = 5;
-  constexpr int D = 7;
+  constexpr int D = 6;
 
   float src_points[N][D] = {
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
-    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f},
-    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f},
-    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 1.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f},
+    {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f}, {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f},
+    {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f}, {3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f},
+    {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f}, {5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f},
   };
 
   std::vector<mtr::LanePoint> points;
@@ -85,8 +84,7 @@ void test_case2()
     auto dx = src_points[n][3];
     auto dy = src_points[n][4];
     auto dz = src_points[n][5];
-    auto label = src_points[n][6];
-    mtr::LanePoint point(x, y, z, dx, dy, dz, label);
+    mtr::LanePoint point(x, y, z, dx, dy, dz);
     points.emplace_back(point);
   }
 
